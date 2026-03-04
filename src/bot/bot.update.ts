@@ -1,0 +1,334 @@
+import {
+  Update,
+  Start,
+  Help,
+  Command,
+  On,
+  Action,
+  Ctx,
+} from 'nestjs-telegraf';
+import { Context } from 'telegraf';
+import { Logger } from '@nestjs/common';
+import { BotService } from './bot.service';
+import { UsersService } from '../users/users.service';
+import { ReferralService } from '../users/referral.service';
+import { AnalyticsService } from '../analytics/analytics.service';
+import { BillingService } from '../billing/billing.service';
+import { StarsService } from '../billing/stars.service';
+import { MESSAGES } from './messages';
+import {
+  mainMenuKeyboard,
+  chatModelsKeyboard,
+  imageModelsKeyboard,
+  visionModelsKeyboard,
+  audioModelsKeyboard,
+  buyKeyboard,
+  buyMethodKeyboard,
+} from './keyboards';
+import { getModel } from '../ai/models.config';
+import { ConfigService } from '@nestjs/config';
+
+@Update()
+export class BotUpdate {
+  private readonly logger = new Logger(BotUpdate.name);
+
+  constructor(
+    private readonly botService: BotService,
+    private readonly users: UsersService,
+    private readonly referral: ReferralService,
+    private readonly analytics: AnalyticsService,
+    private readonly billing: BillingService,
+    private readonly stars: StarsService,
+    private readonly config: ConfigService,
+  ) {}
+
+  @Start()
+  async onStart(@Ctx() ctx: Context) {
+    const telegramId = BigInt(ctx.from.id);
+    const payload = (ctx.message as any)?.text?.split(' ')[1];
+
+    const user = await this.users.findOrCreate(
+      telegramId,
+      ctx.from.username,
+      ctx.from.first_name,
+    );
+
+    // Process referral deep link
+    if (payload?.startsWith('ref_')) {
+      const refCode = payload.slice(4);
+      await this.referral.processReferral(user.id, refCode, ctx);
+    }
+
+    const botUsername = ctx.botInfo.username;
+    const referralLink = `https://t.me/${botUsername}?start=ref_${user.referralCode}`;
+
+    await ctx.reply(MESSAGES.WELCOME(referralLink), {
+      parse_mode: 'HTML',
+      ...mainMenuKeyboard(),
+    });
+  }
+
+  @Help()
+  async onHelp(@Ctx() ctx: Context) {
+    await ctx.reply(MESSAGES.HELP, { parse_mode: 'HTML' });
+  }
+
+  @Command('balance')
+  async onBalance(@Ctx() ctx: Context) {
+    const telegramId = BigInt(ctx.from.id);
+    const user = await this.users.findOrCreate(telegramId);
+    const balanceInfo = await this.users.getBalance(user.id);
+    const textLeft = await this.botService.getFreeRemaining(user.id, 'text');
+    const imgLeft = await this.botService.getFreeRemaining(user.id, 'image');
+
+    await ctx.reply(
+      MESSAGES.BALANCE(
+        user.balance,
+        textLeft,
+        imgLeft,
+        balanceInfo.expiring,
+        balanceInfo.permanent,
+      ),
+      { parse_mode: 'HTML' },
+    );
+  }
+
+  @Command('buy')
+  async onBuy(@Ctx() ctx: Context) {
+    await ctx.reply(MESSAGES.BUY_PROMPT, {
+      parse_mode: 'HTML',
+      ...buyKeyboard(),
+    });
+  }
+
+  @Command('menu')
+  async onMenu(@Ctx() ctx: Context) {
+    await ctx.reply('🤖 <b>Выберите категорию:</b>', {
+      parse_mode: 'HTML',
+      ...mainMenuKeyboard(),
+    });
+  }
+
+  @Command('ref')
+  async onRef(@Ctx() ctx: Context) {
+    const telegramId = BigInt(ctx.from.id);
+    const user = await this.users.findOrCreate(telegramId);
+    const stats = await this.referral.getReferralStats(user.id);
+    const botUsername = ctx.botInfo.username;
+    const link = `https://t.me/${botUsername}?start=ref_${user.referralCode}`;
+
+    await ctx.reply(MESSAGES.REFERRAL(link, stats.count, stats.earned), {
+      parse_mode: 'HTML',
+    });
+  }
+
+  @Command('mode')
+  async onMode(@Ctx() ctx: Context) {
+    const telegramId = BigInt(ctx.from.id);
+    const user = await this.users.findOrCreate(telegramId);
+
+    if (user.selectedModel) {
+      await this.users.setSelectedModel(user.id, null);
+      await ctx.reply(MESSAGES.AUTO_MODE, { parse_mode: 'HTML' });
+    } else {
+      await ctx.reply('🤖 Выберите модель через /menu или отправьте сообщение в авто-режиме.');
+    }
+  }
+
+  @Command('stats')
+  async onStats(@Ctx() ctx: Context) {
+    const telegramId = BigInt(ctx.from.id);
+    const user = await this.users.findOrCreate(telegramId);
+    const isAdmin = await this.users.isAdmin(user.id, telegramId);
+
+    if (isAdmin) {
+      const data = await this.analytics.getAdminStats();
+      await ctx.reply(MESSAGES.STATS_ADMIN(data), { parse_mode: 'HTML' });
+    } else {
+      const data = await this.analytics.getUserStats(user.id);
+      await ctx.reply(
+        MESSAGES.STATS_USER(
+          data.requests,
+          data.tokensSpent,
+          data.favoriteModel,
+          data.daysActive,
+          data.referrals,
+        ),
+        { parse_mode: 'HTML' },
+      );
+    }
+  }
+
+  @Command('privacy')
+  async onPrivacy(@Ctx() ctx: Context) {
+    await ctx.reply(MESSAGES.PRIVACY_POLICY, { parse_mode: 'HTML' });
+  }
+
+  @Command('terms')
+  async onTerms(@Ctx() ctx: Context) {
+    await ctx.reply(MESSAGES.TERMS_OF_SERVICE, { parse_mode: 'HTML' });
+  }
+
+  @Command('promo')
+  async onPromo(@Ctx() ctx: Context) {
+    const text = (ctx.message as any)?.text ?? '';
+    const code = text.split(' ')[1]?.trim().toUpperCase();
+
+    if (!code) {
+      await ctx.reply('Введите промокод: /promo ВАSHKOD');
+      return;
+    }
+
+    const telegramId = BigInt(ctx.from.id);
+    const user = await this.users.findOrCreate(telegramId);
+
+    const result = await this.users.applyPromoCode(user.id, code);
+    if (result.success) {
+      await ctx.reply(MESSAGES.PROMO_SUCCESS(result.tokens), { parse_mode: 'HTML' });
+    } else {
+      await ctx.reply(MESSAGES.PROMO_INVALID, { parse_mode: 'HTML' });
+    }
+  }
+
+  // --- Callback Query Handlers ---
+
+  @Action(/^menu_(.+)$/)
+  async onMenuCategory(@Ctx() ctx: Context) {
+    const match = (ctx as any).match;
+    const category = match?.[1];
+
+    let keyboard;
+    let label;
+
+    switch (category) {
+      case 'chat':
+        keyboard = chatModelsKeyboard();
+        label = '💬 Чат-модели:';
+        break;
+      case 'image':
+        keyboard = imageModelsKeyboard();
+        label = '🎨 Генерация изображений:';
+        break;
+      case 'vision':
+        keyboard = visionModelsKeyboard();
+        label = '📷 Анализ фото:';
+        break;
+      case 'audio':
+        keyboard = audioModelsKeyboard();
+        label = '🎤 Аудио/Голос:';
+        break;
+      default:
+        return;
+    }
+
+    await ctx.editMessageText(`🤖 <b>${label}</b>`, {
+      parse_mode: 'HTML',
+      ...keyboard,
+    });
+  }
+
+  @Action(/^model_(.+)$/)
+  async onModelSelect(@Ctx() ctx: Context) {
+    const match = (ctx as any).match;
+    const modelId = match?.[1];
+    const model = getModel(modelId);
+    if (!model) return;
+
+    const telegramId = BigInt(ctx.from.id);
+    const user = await this.users.findOrCreate(telegramId);
+    await this.users.setSelectedModel(user.id, modelId);
+
+    await ctx.editMessageText(MESSAGES.MODEL_SELECTED(model.displayName), {
+      parse_mode: 'HTML',
+    });
+  }
+
+  @Action(/^buy_(.+)$/)
+  async onBuyPackage(@Ctx() ctx: Context) {
+    const match = (ctx as any).match;
+    const packageId = match?.[1];
+
+    await ctx.editMessageText('💳 <b>Выберите способ оплаты:</b>', {
+      parse_mode: 'HTML',
+      ...buyMethodKeyboard(packageId),
+    });
+  }
+
+  @Action(/^pay_yukassa_(.+)$/)
+  async onPayYukassa(@Ctx() ctx: Context) {
+    const match = (ctx as any).match;
+    const packageId = match?.[1];
+    const telegramId = BigInt(ctx.from.id);
+    const user = await this.users.findOrCreate(telegramId);
+
+    await ctx.answerCbQuery('Создаём платёж...');
+
+    try {
+      const { Markup } = await import('telegraf');
+      const { paymentUrl } = await this.billing.createYukassaPayment(user.id, packageId);
+      await ctx.reply('💳 Перейдите по ссылке для оплаты:', {
+        ...Markup.inlineKeyboard([[Markup.button.url('Оплатить через ЮKassa', paymentUrl)]]),
+      });
+    } catch {
+      await ctx.reply('❌ Не удалось создать платёж. Попробуйте позже.');
+    }
+  }
+
+  @Action(/^pay_stars_(.+)$/)
+  async onPayStars(@Ctx() ctx: Context) {
+    const match = (ctx as any).match;
+    const packageId = match?.[1];
+    const telegramId = BigInt(ctx.from.id);
+    const user = await this.users.findOrCreate(telegramId);
+
+    await ctx.answerCbQuery();
+    await this.stars.createInvoice(ctx, packageId, user.id);
+  }
+
+  @Action('back_menu')
+  async onBackMenu(@Ctx() ctx: Context) {
+    await ctx.editMessageText('🤖 <b>Выберите категорию:</b>', {
+      parse_mode: 'HTML',
+      ...mainMenuKeyboard(),
+    });
+  }
+
+  // --- Message Handlers ---
+
+  @On('text')
+  async onText(@Ctx() ctx: Context) {
+    await this.botService.processMessage(ctx, 'text');
+  }
+
+  @On('photo')
+  async onPhoto(@Ctx() ctx: Context) {
+    await this.botService.processMessage(ctx, 'photo');
+  }
+
+  @On('voice')
+  async onVoice(@Ctx() ctx: Context) {
+    await this.botService.processMessage(ctx, 'voice');
+  }
+
+  @On('audio')
+  async onAudio(@Ctx() ctx: Context) {
+    await this.botService.processMessage(ctx, 'audio');
+  }
+
+  @On('pre_checkout_query')
+  async onPreCheckout(@Ctx() ctx: Context) {
+    await (ctx as any).answerPreCheckoutQuery(true);
+  }
+
+  @On('successful_payment')
+  async onSuccessfulPayment(@Ctx() ctx: Context) {
+    const payment = (ctx.message as any)?.successful_payment;
+    if (!payment) return;
+
+    try {
+      await this.stars.handleSuccessfulPayment(ctx);
+    } catch (err) {
+      this.logger.error('Error processing successful_payment', err);
+    }
+  }
+}

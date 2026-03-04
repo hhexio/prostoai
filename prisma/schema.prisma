@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  Int            @id @default(autoincrement())
+  telegramId          BigInt         @unique
+  username            String?
+  firstName           String?
+  balance             Int            @default(0)
+  referralCode        String         @unique @default(uuid())
+  referredBy          Int?
+  selectedModel       String?
+  isAdmin             Boolean        @default(false)
+  freeUsedToday       Int            @default(0)
+  freeImagesUsedToday Int            @default(0)
+  freeResetAt         DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  packages            TokenPackage[]
+  usages              Usage[]
+  payments            Payment[]
+  referrals           Referral[]     @relation("ReferrerRelation")
+}
+
+enum PackageType {
+  EXPIRING
+  PERMANENT
+}
+
+model TokenPackage {
+  id         Int         @id @default(autoincrement())
+  userId     Int
+  user       User        @relation(fields: [userId], references: [id])
+  tokens     Int
+  tokensUsed Int         @default(0)
+  type       PackageType
+  expiresAt  DateTime?
+  createdAt  DateTime    @default(now())
+
+  @@index([userId, type, expiresAt])
+}
+
+model Usage {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id])
+  model        String
+  inputTokens  Int
+  outputTokens Int
+  balanceCost  Int
+  responseTime Int?
+  isFree       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+enum PaymentProvider {
+  YUKASSA
+  STARS
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  CANCELLED
+  REFUNDED
+}
+
+model Payment {
+  id          Int             @id @default(autoincrement())
+  userId      Int
+  user        User            @relation(fields: [userId], references: [id])
+  amount      Int
+  tokens      Int
+  packageType PackageType
+  provider    PaymentProvider
+  status      PaymentStatus   @default(PENDING)
+  externalId  String?         @unique
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([userId, status])
+}
+
+model Referral {
+  id          Int      @id @default(autoincrement())
+  referrerId  Int
+  referrer    User     @relation("ReferrerRelation", fields: [referrerId], references: [id])
+  referredId  Int      @unique
+  bonusTokens Int      @default(50000)
+  createdAt   DateTime @default(now())
+
+  @@index([referrerId])
+}
+
+model PromoCode {
+  id        Int       @id @default(autoincrement())
+  code      String    @unique
+  tokens    Int
+  maxUses   Int       @default(100)
+  usedCount Int       @default(0)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+}

@@ -15,7 +15,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
     ConfigModule.forRoot({ isGlobal: true }),
     TelegrafModule.forRootAsync({
       useFactory: () => ({
-        token: process.env.BOT_TOKEN,
+        token: process.env.BOT_TOKEN!,
       }),
     }),
     RedisModule.forRootAsync({

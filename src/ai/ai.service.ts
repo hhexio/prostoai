@@ -25,8 +25,8 @@ export class AiService {
     private readonly httpService: HttpService,
     private readonly config: ConfigService,
   ) {
-    this.baseUrl = this.config.get('PROXYAPI_URL');
-    this.apiKey = this.config.get('PROXYAPI_KEY');
+    this.baseUrl = this.config.get('PROXYAPI_URL')!;
+    this.apiKey = this.config.get('PROXYAPI_KEY')!;
   }
 
   private get headers() {
@@ -37,7 +37,7 @@ export class AiService {
     const model = getModel(modelId);
     if (!model) throw new Error(`Unknown model: ${modelId}`);
 
-    const messages = [];
+    const messages: Array<{ role: string; content: string | any[] }> = [];
     if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
     messages.push({ role: 'user', content: userMessage });
 

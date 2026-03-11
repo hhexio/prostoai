@@ -24,11 +24,11 @@ export class BotService {
   ) {}
 
   async processMessage(ctx: Context, type: 'text' | 'photo' | 'voice' | 'audio') {
-    const telegramId = BigInt(ctx.from.id);
+    const telegramId = BigInt(ctx.from!.id);
     const user = await this.users.findOrCreate(
       telegramId,
-      ctx.from.username,
-      ctx.from.first_name,
+      ctx.from!.username,
+      ctx.from!.first_name,
     );
 
     const messageText = type === 'text' ? (ctx.message as any)?.text : undefined;

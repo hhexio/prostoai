@@ -23,6 +23,7 @@ export class StarsService {
         title: `ProstoAI — ${pkg.name}`,
         description: `${pkg.tokens.toLocaleString('ru-RU')} токенов${pkg.type === 'EXPIRING' ? ' (30 дней)' : ' (бессрочно)'}`,
         payload,
+        provider_token: '',
         currency: 'XTR',
         prices: [{ label: pkg.name, amount: pkg.priceStars }],
       });

@@ -44,13 +44,13 @@ export class BotUpdate {
 
   @Start()
   async onStart(@Ctx() ctx: Context) {
-    const telegramId = BigInt(ctx.from.id);
+    const telegramId = BigInt(ctx.from!.id);
     const payload = (ctx.message as any)?.text?.split(' ')[1];
 
     const user = await this.users.findOrCreate(
       telegramId,
-      ctx.from.username,
-      ctx.from.first_name,
+      ctx.from!.username,
+      ctx.from!.first_name,
     );
 
     // Process referral deep link
@@ -75,7 +75,7 @@ export class BotUpdate {
 
   @Command('balance')
   async onBalance(@Ctx() ctx: Context) {
-    const telegramId = BigInt(ctx.from.id);
+    const telegramId = BigInt(ctx.from!.id);
     const user = await this.users.findOrCreate(telegramId);
     const balanceInfo = await this.users.getBalance(user.id);
     const textLeft = await this.botService.getFreeRemaining(user.id, 'text');
@@ -111,7 +111,7 @@ export class BotUpdate {
 
   @Command('ref')
   async onRef(@Ctx() ctx: Context) {
-    const telegramId = BigInt(ctx.from.id);
+    const telegramId = BigInt(ctx.from!.id);
     const user = await this.users.findOrCreate(telegramId);
     const stats = await this.referral.getReferralStats(user.id);
     const botUsername = ctx.botInfo.username;
@@ -124,7 +124,7 @@ export class BotUpdate {
 
   @Command('mode')
   async onMode(@Ctx() ctx: Context) {
-    const telegramId = BigInt(ctx.from.id);
+    const telegramId = BigInt(ctx.from!.id);
     const user = await this.users.findOrCreate(telegramId);
 
     if (user.selectedModel) {
@@ -137,7 +137,7 @@ export class BotUpdate {
 
   @Command('stats')
   async onStats(@Ctx() ctx: Context) {
-    const telegramId = BigInt(ctx.from.id);
+    const telegramId = BigInt(ctx.from!.id);
     const user = await this.users.findOrCreate(telegramId);
     const isAdmin = await this.users.isAdmin(user.id, telegramId);
 
@@ -179,7 +179,7 @@ export class BotUpdate {
       return;
     }
 
-    const telegramId = BigInt(ctx.from.id);
+    const telegramId = BigInt(ctx.from!.id);
     const user = await this.users.findOrCreate(telegramId);
 
     const result = await this.users.applyPromoCode(user.id, code);
@@ -234,7 +234,7 @@ export class BotUpdate {
     const model = getModel(modelId);
     if (!model) return;
 
-    const telegramId = BigInt(ctx.from.id);
+    const telegramId = BigInt(ctx.from!.id);
     const user = await this.users.findOrCreate(telegramId);
     await this.users.setSelectedModel(user.id, modelId);
 
@@ -258,7 +258,7 @@ export class BotUpdate {
   async onPayYukassa(@Ctx() ctx: Context) {
     const match = (ctx as any).match;
     const packageId = match?.[1];
-    const telegramId = BigInt(ctx.from.id);
+    const telegramId = BigInt(ctx.from!.id);
     const user = await this.users.findOrCreate(telegramId);
 
     await ctx.answerCbQuery('Создаём платёж...');
@@ -278,7 +278,7 @@ export class BotUpdate {
   async onPayStars(@Ctx() ctx: Context) {
     const match = (ctx as any).match;
     const packageId = match?.[1];
-    const telegramId = BigInt(ctx.from.id);
+    const telegramId = BigInt(ctx.from!.id);
     const user = await this.users.findOrCreate(telegramId);
 
     await ctx.answerCbQuery();

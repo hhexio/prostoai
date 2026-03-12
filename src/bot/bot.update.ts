@@ -24,6 +24,7 @@ import {
   audioModelsKeyboard,
   buyKeyboard,
   buyMethodKeyboard,
+  profileKeyboard,
 } from './keyboards';
 import { getModel } from '../ai/models.config';
 import { ConfigService } from '@nestjs/config';
@@ -89,7 +90,10 @@ export class BotUpdate {
         balanceInfo.expiring,
         balanceInfo.permanent,
       ),
-      { parse_mode: 'HTML' },
+      {
+        parse_mode: 'HTML',
+        ...profileKeyboard(),
+      },
     );
   }
 
@@ -175,7 +179,7 @@ export class BotUpdate {
     const code = text.split(' ')[1]?.trim().toUpperCase();
 
     if (!code) {
-      await ctx.reply('Введите промокод: /promo ВАSHKOD');
+      await ctx.reply('Введите промокод: /promo ВАШKОД');
       return;
     }
 
@@ -198,30 +202,30 @@ export class BotUpdate {
     const category = match?.[1];
 
     let keyboard;
-    let label;
+    let infoText;
 
     switch (category) {
       case 'chat':
         keyboard = chatModelsKeyboard();
-        label = '💬 Чат-модели:';
+        infoText = '💬 <b>Чат-модели:</b>';
         break;
       case 'image':
         keyboard = imageModelsKeyboard();
-        label = '🎨 Генерация изображений:';
+        infoText = MESSAGES.IMAGE_CATEGORY_INFO;
         break;
       case 'vision':
         keyboard = visionModelsKeyboard();
-        label = '📷 Анализ фото:';
+        infoText = MESSAGES.PHOTO_CATEGORY_INFO;
         break;
       case 'audio':
         keyboard = audioModelsKeyboard();
-        label = '🎤 Аудио/Голос:';
+        infoText = MESSAGES.AUDIO_CATEGORY_INFO;
         break;
       default:
         return;
     }
 
-    await ctx.editMessageText(`🤖 <b>${label}</b>`, {
+    await ctx.editMessageText(infoText, {
       parse_mode: 'HTML',
       ...keyboard,
     });
@@ -238,15 +242,85 @@ export class BotUpdate {
     const user = await this.users.findOrCreate(telegramId);
     await this.users.setSelectedModel(user.id, modelId);
 
-    await ctx.editMessageText(MESSAGES.MODEL_SELECTED(model.displayName), {
+    // Special message for Nano Banana 2
+    if (modelId === 'nano-banana-2') {
+      await ctx.editMessageText(MESSAGES.NANO_BANANA_SELECTED, {
+        parse_mode: 'HTML',
+      });
+    } else {
+      await ctx.editMessageText(MESSAGES.MODEL_SELECTED(model.displayName), {
+        parse_mode: 'HTML',
+      });
+    }
+  }
+
+  @Action('profile')
+  async onProfile(@Ctx() ctx: Context) {
+    const telegramId = BigInt(ctx.from!.id);
+    const user = await this.users.findOrCreate(telegramId);
+    const balanceInfo = await this.users.getBalance(user.id);
+    const textLeft = await this.botService.getFreeRemaining(user.id, 'text');
+    const imgLeft = await this.botService.getFreeRemaining(user.id, 'image');
+
+    await ctx.editMessageText(
+      MESSAGES.BALANCE(
+        user.balance,
+        textLeft,
+        imgLeft,
+        balanceInfo.expiring,
+        balanceInfo.permanent,
+      ),
+      {
+        parse_mode: 'HTML',
+        ...profileKeyboard(),
+      },
+    );
+  }
+
+  @Action('buy_tokens')
+  async onBuyTokens(@Ctx() ctx: Context) {
+    await ctx.editMessageText(MESSAGES.BUY_PROMPT, {
+      parse_mode: 'HTML',
+      ...buyKeyboard(),
+    });
+  }
+
+  @Action('referral_link')
+  async onReferralLink(@Ctx() ctx: Context) {
+    const telegramId = BigInt(ctx.from!.id);
+    const user = await this.users.findOrCreate(telegramId);
+    const stats = await this.referral.getReferralStats(user.id);
+    const botUsername = ctx.botInfo.username;
+    const link = `https://t.me/${botUsername}?start=ref_${user.referralCode}`;
+
+    await ctx.editMessageText(MESSAGES.REFERRAL(link, stats.count, stats.earned), {
       parse_mode: 'HTML',
     });
+  }
+
+  @Action('user_stats')
+  async onUserStats(@Ctx() ctx: Context) {
+    const telegramId = BigInt(ctx.from!.id);
+    const user = await this.users.findOrCreate(telegramId);
+    const data = await this.analytics.getUserStats(user.id);
+
+    await ctx.editMessageText(
+      MESSAGES.STATS_USER(
+        data.requests,
+        data.tokensSpent,
+        data.favoriteModel,
+        data.daysActive,
+        data.referrals,
+      ),
+      { parse_mode: 'HTML' },
+    );
   }
 
   @Action(/^buy_(.+)$/)
   async onBuyPackage(@Ctx() ctx: Context) {
     const match = (ctx as any).match;
     const packageId = match?.[1];
+    if (packageId === 'tokens') return; // handled by buy_tokens action
 
     await ctx.editMessageText('💳 <b>Выберите способ оплаты:</b>', {
       parse_mode: 'HTML',

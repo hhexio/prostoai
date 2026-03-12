@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AiService } from '../ai/ai.service';
 import { RouterService } from '../ai/router.service';
 import { UsersService } from '../users/users.service';
+import { getModel } from '../ai/models.config';
 import { MESSAGES } from './messages';
 import { buyKeyboard } from './keyboards';
 import { ConfigService } from '@nestjs/config';
@@ -35,33 +36,71 @@ export class BotService {
 
     // Determine model
     const modelId = user.selectedModel ?? this.router.route(type, messageText);
-    const isImageModel = ['imagen-fast', 'nano-banana', 'gpt-image'].includes(modelId);
+    const model = getModel(modelId);
+    const isImageModel = model?.category === 'image';
     const limitType = isImageModel ? 'image' : 'text';
 
     // Estimate cost
     const estimatedCost = this.ai.estimateCost(modelId);
 
-    // Check balance
+    // Fix: Check free limit FIRST, then balance
     let isFree = false;
-    if (user.balance < estimatedCost) {
+    if (model?.isFree) {
       const freeCheck = await this.checkFreeLimit(user.id, limitType);
-      if (!freeCheck.allowed) {
+      if (freeCheck.allowed) {
+        isFree = true;
+      } else {
+        // Free limit exhausted, fall through to balance check
+        if (user.balance < estimatedCost) {
+          await ctx.reply(MESSAGES.NO_BALANCE, {
+            parse_mode: 'HTML',
+            ...buyKeyboard(),
+          });
+          return;
+        }
+      }
+    } else {
+      // Not a free model — check balance
+      if (user.balance < estimatedCost) {
         await ctx.reply(MESSAGES.NO_BALANCE, {
           parse_mode: 'HTML',
           ...buyKeyboard(),
         });
         return;
       }
-      isFree = true;
     }
 
-    // Send typing
-    await ctx.sendChatAction('typing');
+    // Send status message
+    let statusText: string;
+    switch (model?.category) {
+      case 'chat':
+        statusText = '💬 Думаю над ответом... ⏳';
+        break;
+      case 'image':
+        statusText = '🎨 Генерирую изображение... Это может занять 10-30 секунд ⏳';
+        break;
+      case 'vision':
+        statusText = '📸 Анализирую фото... ⏳';
+        break;
+      case 'audio':
+        statusText = '🎤 Распознаю аудио... ⏳';
+        break;
+      default:
+        statusText = '⏳ Обрабатываю...';
+    }
+
+    const statusMsg = await ctx.reply(statusText);
 
     // Call AI
     let aiResponse;
     try {
-      if (type === 'photo') {
+      if (type === 'photo' && model?.endpoint === 'google') {
+        // Nano Banana 2 image editing: photo + caption
+        const photoBuffer = await this.downloadPhoto(ctx);
+        const imageBase64 = photoBuffer.toString('base64');
+        const caption = (ctx.message as any)?.caption || 'Edit this image';
+        aiResponse = await this.ai.generateImageGemini(modelId, caption, imageBase64);
+      } else if (type === 'photo') {
         const photoBuffer = await this.downloadPhoto(ctx);
         const base64 = photoBuffer.toString('base64');
         const caption = (ctx.message as any)?.caption;
@@ -72,7 +111,7 @@ export class BotService {
         // After transcription, send text response too
         if (aiResponse.audioText) {
           const textResponse = await this.ai.chat(
-            user.selectedModel ?? 'gemini-flash',
+            user.selectedModel ?? 'gpt-4.1-mini',
             aiResponse.audioText,
           );
           aiResponse.text = `📝 <b>Расшифровка:</b> ${aiResponse.audioText}\n\n💬 <b>Ответ:</b> ${textResponse.text}`;
@@ -80,6 +119,8 @@ export class BotService {
           aiResponse.inputTokens += textResponse.inputTokens;
           aiResponse.outputTokens += textResponse.outputTokens;
         }
+      } else if (isImageModel && model?.endpoint === 'google') {
+        aiResponse = await this.ai.generateImageGemini(modelId, messageText);
       } else if (isImageModel) {
         aiResponse = await this.ai.generateImage(modelId, messageText);
       } else {
@@ -91,6 +132,7 @@ export class BotService {
       else if (err.message === 'RATE_LIMIT') errorMsg = MESSAGES.ERROR_RATE_LIMIT;
       else if (err.message === 'SERVICE_UNAVAILABLE') errorMsg = MESSAGES.ERROR_SERVICE;
       await ctx.reply(errorMsg, { parse_mode: 'HTML' });
+      try { await ctx.telegram.deleteMessage(ctx.chat!.id, statusMsg.message_id); } catch {}
       return;
     }
 
@@ -113,12 +155,30 @@ export class BotService {
       },
     });
 
-    // Send response
-    if (aiResponse.imageUrl) {
-      await ctx.replyWithPhoto(aiResponse.imageUrl);
-    } else if (aiResponse.text) {
-      await ctx.reply(aiResponse.text, { parse_mode: 'HTML' });
+    // Send response with 413 handling
+    try {
+      if (aiResponse.imageBuffer) {
+        await ctx.replyWithPhoto({ source: aiResponse.imageBuffer });
+      } else if (aiResponse.imageUrl) {
+        await ctx.replyWithPhoto({ url: aiResponse.imageUrl });
+      } else if (aiResponse.text) {
+        await ctx.reply(aiResponse.text, { parse_mode: 'HTML' });
+      }
+    } catch (err) {
+      if (err.message?.includes('413') || err.message?.includes('Too Large')) {
+        // Try sending as document instead
+        if (aiResponse.imageBuffer) {
+          await ctx.replyWithDocument({ source: aiResponse.imageBuffer, filename: 'image.png' });
+        } else {
+          await ctx.reply('Image was generated but is too large to send. Try a simpler prompt.');
+        }
+      } else {
+        throw err;
+      }
     }
+
+    // Delete status message
+    try { await ctx.telegram.deleteMessage(ctx.chat!.id, statusMsg.message_id); } catch {}
 
     // Free hint
     if (isFree) {

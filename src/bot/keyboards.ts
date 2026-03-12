@@ -1,61 +1,69 @@
 import { Markup } from 'telegraf';
-import { getModelsByCategory } from '../ai/models.config';
 
 export function mainMenuKeyboard() {
   return Markup.inlineKeyboard([
     [
-      Markup.button.callback('💬 Чат', 'menu_chat'),
-      Markup.button.callback('🎨 Изображения', 'menu_image'),
+      Markup.button.callback('🔥 GPT-5.1', 'model_gpt-5.1'),
+      Markup.button.callback('🍌 Nano Banana', 'model_nano-banana-2'),
     ],
     [
-      Markup.button.callback('📷 Анализ фото', 'menu_vision'),
-      Markup.button.callback('🎤 Аудио/Голос', 'menu_audio'),
+      Markup.button.callback('💬 Чат-модели', 'menu_chat'),
+      Markup.button.callback('🎨 Создать фото', 'menu_image'),
+    ],
+    [
+      Markup.button.callback('📸 Работа с фото', 'menu_vision'),
+      Markup.button.callback('🎤 Работа с аудио', 'menu_audio'),
+    ],
+    [
+      Markup.button.callback('👤 Мой профиль', 'profile'),
+      Markup.button.callback('💎 Купить токены', 'buy_tokens'),
     ],
   ]);
 }
 
 export function chatModelsKeyboard() {
-  const models = getModelsByCategory('chat');
-  const buttons = models.map((m) =>
-    Markup.button.callback(
-      `${m.isFree ? '🆓 ' : ''}${m.displayName} x${m.multiplier}`,
-      `model_${m.id}`,
-    ),
-  );
-  return Markup.inlineKeyboard([...buttons.map((b) => [b]), [backButton()]]);
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback('⚡ GPT-4.1 Mini (FREE)', 'model_gpt-4.1-mini'),
+      Markup.button.callback('🧠 GPT-5 Mini', 'model_gpt-5-mini'),
+    ],
+    [
+      Markup.button.callback('🌟 GPT-4o', 'model_gpt-4o'),
+      Markup.button.callback('🔥 GPT-5.1', 'model_gpt-5.1'),
+    ],
+    [Markup.button.callback('« Назад', 'back_menu')],
+  ]);
 }
 
 export function imageModelsKeyboard() {
-  const models = getModelsByCategory('image');
-  const buttons = models.map((m) =>
-    Markup.button.callback(
-      `${m.isFree ? '🆓 ' : ''}${m.displayName} ~${(m.estimatedTokens / 1000).toFixed(0)}k`,
-      `model_${m.id}`,
-    ),
-  );
-  return Markup.inlineKeyboard([...buttons.map((b) => [b]), [backButton()]]);
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback('🖼 GPT Image Mini (FREE)', 'model_gpt-image-1-mini'),
+      Markup.button.callback('🍌 Nano Banana 2', 'model_nano-banana-2'),
+    ],
+    [
+      Markup.button.callback('🎨 GPT Image 1', 'model_gpt-image-1'),
+      Markup.button.callback('✨ GPT Image 1.5', 'model_gpt-image-1.5'),
+    ],
+    [
+      Markup.button.callback('🌈 DALL-E 3', 'model_dall-e-3'),
+      Markup.button.callback('« Назад', 'back_menu'),
+    ],
+  ]);
 }
 
 export function visionModelsKeyboard() {
-  const models = getModelsByCategory('vision');
-  const buttons = models.map((m) =>
-    Markup.button.callback(
-      `${m.isFree ? '🆓 ' : ''}${m.displayName} ~${(m.estimatedTokens / 1000).toFixed(1)}k`,
-      `model_${m.id}`,
-    ),
-  );
-  return Markup.inlineKeyboard([...buttons.map((b) => [b]), [backButton()]]);
+  return Markup.inlineKeyboard([
+    [Markup.button.callback('📸 GPT-4o Vision (FREE)', 'model_gpt-4o-vision')],
+    [Markup.button.callback('« Назад', 'back_menu')],
+  ]);
 }
 
 export function audioModelsKeyboard() {
-  const models = getModelsByCategory('audio');
-  const buttons = models.map((m) =>
-    Markup.button.callback(
-      `${m.displayName} ~${(m.estimatedTokens / 1000).toFixed(0)}k/мин`,
-      `model_${m.id}`,
-    ),
-  );
-  return Markup.inlineKeyboard([...buttons.map((b) => [b]), [backButton()]]);
+  return Markup.inlineKeyboard([
+    [Markup.button.callback('🎤 Whisper', 'model_whisper')],
+    [Markup.button.callback('« Назад', 'back_menu')],
+  ]);
 }
 
 export interface PackageConfig {
@@ -83,26 +91,17 @@ export const TOKEN_PACKAGES: PackageConfig[] = [
 ];
 
 export function buyKeyboard() {
-  const expiring = TOKEN_PACKAGES.filter((p) => p.type === 'EXPIRING');
-  const permanent = TOKEN_PACKAGES.filter((p) => p.type === 'PERMANENT');
-
-  const expiringButtons = expiring.map((p) =>
-    Markup.button.callback(
-      `⏱ ${p.name} ${(p.tokens / 1000).toFixed(0)}k — ${p.priceRub}₽`,
-      `buy_${p.id}`,
-    ),
-  );
-
-  const permanentButtons = permanent.map((p) =>
-    Markup.button.callback(
-      `♾️ ${p.name} ${(p.tokens / 1000).toFixed(0)}k — ${p.priceRub}₽`,
-      `buy_${p.id}`,
-    ),
-  );
-
   return Markup.inlineKeyboard([
-    ...expiringButtons.map((b) => [b]),
-    ...permanentButtons.map((b) => [b]),
+    [
+      Markup.button.callback('💰 Starter 100k — 99₽', 'buy_starter'),
+      Markup.button.callback('💎 Basic 250k — 199₽', 'buy_basic'),
+    ],
+    [
+      Markup.button.callback('⭐ Standard 500k — 299₽', 'buy_standard'),
+      Markup.button.callback('🚀 Pro 1.5M — 690₽', 'buy_pro'),
+    ],
+    [Markup.button.callback('👑 Ultra 5M — 1990₽', 'buy_ultra')],
+    [Markup.button.callback('« Назад', 'back_menu')],
   ]);
 }
 
@@ -110,14 +109,23 @@ export function buyMethodKeyboard(packageId: string) {
   return Markup.inlineKeyboard([
     [Markup.button.callback('💳 ЮKassa (карта/СБП)', `pay_yukassa_${packageId}`)],
     [Markup.button.callback('⭐ Telegram Stars', `pay_stars_${packageId}`)],
-    [backButton()],
+    [Markup.button.callback('« Назад', 'back_menu')],
+  ]);
+}
+
+export function profileKeyboard() {
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback('💎 Купить токены', 'buy_tokens'),
+      Markup.button.callback('🔗 Реферальная ссылка', 'referral_link'),
+    ],
+    [
+      Markup.button.callback('📊 Статистика', 'user_stats'),
+      Markup.button.callback('« В главное меню', 'back_menu'),
+    ],
   ]);
 }
 
 export function backToMenuKeyboard() {
-  return Markup.inlineKeyboard([[backButton()]]);
-}
-
-function backButton() {
-  return Markup.button.callback('« Назад', 'back_menu');
+  return Markup.inlineKeyboard([[Markup.button.callback('« Назад', 'back_menu')]]);
 }

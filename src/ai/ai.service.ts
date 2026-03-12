@@ -8,6 +8,7 @@ import { getModel, MODELS } from './models.config';
 export interface AiResponse {
   text?: string;
   imageUrl?: string;
+  imageBuffer?: Buffer;
   audioText?: string;
   inputTokens: number;
   outputTokens: number;
@@ -90,6 +91,74 @@ export class AiService {
         outputTokens: 0,
         totalCost: model.estimatedTokens,
         responseTime: Date.now() - start,
+      };
+    } catch (err) {
+      throw this.handleError(err);
+    }
+  }
+
+  async generateImageGemini(modelId: string, prompt: string, imageBase64?: string): Promise<AiResponse> {
+    const model = getModel(modelId);
+    if (!model) throw new Error(`Unknown model: ${modelId}`);
+
+    const startTime = Date.now();
+
+    // Build parts array
+    const parts: any[] = [{ text: prompt }];
+
+    // If user sent a photo for editing, include it
+    if (imageBase64) {
+      parts.push({
+        inline_data: {
+          mime_type: 'image/jpeg',
+          data: imageBase64,
+        },
+      });
+    }
+
+    try {
+      const response = await firstValueFrom(
+        this.httpService.post(
+          `https://api.proxyapi.ru/google/v1beta/models/${model.apiModel}:generateContent`,
+          {
+            contents: [{ parts }],
+            generationConfig: {
+              responseModalities: ['TEXT', 'IMAGE'],
+            },
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${this.apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            timeout: 60000,
+          },
+        ),
+      );
+
+      // Parse response - Gemini returns parts with inline_data for images
+      const data = response.data;
+      let imageBuffer: Buffer | null = null;
+      let textResponse: string | null = null;
+
+      if (data.candidates && data.candidates[0]?.content?.parts) {
+        for (const part of data.candidates[0].content.parts) {
+          if (part.inline_data) {
+            imageBuffer = Buffer.from(part.inline_data.data, 'base64');
+          }
+          if (part.text) {
+            textResponse = part.text;
+          }
+        }
+      }
+
+      return {
+        imageBuffer: imageBuffer ?? undefined,
+        text: textResponse ?? undefined,
+        inputTokens: 0,
+        outputTokens: model.estimatedTokens,
+        totalCost: model.estimatedTokens,
+        responseTime: Date.now() - startTime,
       };
     } catch (err) {
       throw this.handleError(err);

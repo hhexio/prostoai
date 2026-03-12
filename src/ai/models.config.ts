@@ -7,72 +7,76 @@ export interface ModelConfig {
   category: 'chat' | 'image' | 'vision' | 'audio';
   isFree: boolean;
   estimatedTokens: number;
+  endpoint?: string; // undefined = openai, "google" = Gemini API
 }
 
 export const MODELS: Record<string, ModelConfig> = {
-  'gemini-flash': {
-    id: 'gemini-flash',
-    apiModel: 'gemini-2.5-flash',
-    displayName: 'Gemini 2.5 Flash',
+  // Chat Models (OpenAI endpoint)
+  'gpt-4.1-mini': {
+    id: 'gpt-4.1-mini',
+    apiModel: 'gpt-4.1-mini',
+    displayName: 'GPT-4.1 Mini',
     multiplier: 1,
-    maxTokens: 1500,
+    maxTokens: 2000,
     category: 'chat',
     isFree: true,
-    estimatedTokens: 700,
+    estimatedTokens: 1500,
   },
-  'deepseek-r1': {
-    id: 'deepseek-r1',
-    apiModel: 'deepseek-r1',
-    displayName: 'DeepSeek R1',
-    multiplier: 1.3,
+  'gpt-5-mini': {
+    id: 'gpt-5-mini',
+    apiModel: 'gpt-5-mini',
+    displayName: 'GPT-5 Mini',
+    multiplier: 1.5,
     maxTokens: 2000,
     category: 'chat',
     isFree: false,
-    estimatedTokens: 1000,
+    estimatedTokens: 2000,
   },
-  'claude-haiku': {
-    id: 'claude-haiku',
-    apiModel: 'claude-haiku-4-5',
-    displayName: 'Claude Haiku 4.5',
+  'gpt-4o': {
+    id: 'gpt-4o',
+    apiModel: 'gpt-4o',
+    displayName: 'GPT-4o',
     multiplier: 2,
     maxTokens: 2000,
     category: 'chat',
     isFree: false,
-    estimatedTokens: 1500,
+    estimatedTokens: 2000,
   },
-  'gpt-5': {
-    id: 'gpt-5',
-    apiModel: 'gpt-4.1',
-    displayName: 'GPT-4.1',
+  'gpt-5.1': {
+    id: 'gpt-5.1',
+    apiModel: 'gpt-5.1',
+    displayName: 'GPT-5.1',
     multiplier: 3.3,
     maxTokens: 2000,
     category: 'chat',
     isFree: false,
-    estimatedTokens: 2500,
+    estimatedTokens: 2000,
   },
-  'imagen-fast': {
-    id: 'imagen-fast',
-    apiModel: 'imagen-4-fast',
-    displayName: 'Imagen 4 Fast',
+
+  // Image Models (OpenAI endpoint)
+  'gpt-image-1-mini': {
+    id: 'gpt-image-1-mini',
+    apiModel: 'gpt-image-1-mini',
+    displayName: 'GPT Image Mini',
     multiplier: 1,
     maxTokens: 8000,
     category: 'image',
     isFree: true,
     estimatedTokens: 8000,
   },
-  'nano-banana': {
-    id: 'nano-banana',
-    apiModel: 'nano-banana-2',
-    displayName: 'Nano Banana 2',
+  'gpt-image-1': {
+    id: 'gpt-image-1',
+    apiModel: 'gpt-image-1',
+    displayName: 'GPT Image 1',
     multiplier: 1,
     maxTokens: 15000,
     category: 'image',
     isFree: false,
     estimatedTokens: 15000,
   },
-  'gpt-image': {
-    id: 'gpt-image',
-    apiModel: 'gpt-image-1',
+  'gpt-image-1.5': {
+    id: 'gpt-image-1.5',
+    apiModel: 'gpt-image-1.5',
     displayName: 'GPT Image 1.5',
     multiplier: 1,
     maxTokens: 30000,
@@ -80,16 +84,43 @@ export const MODELS: Record<string, ModelConfig> = {
     isFree: false,
     estimatedTokens: 30000,
   },
-  'gemini-vision': {
-    id: 'gemini-vision',
-    apiModel: 'gemini-2.5-flash',
-    displayName: 'Gemini Flash Vision',
+  'dall-e-3': {
+    id: 'dall-e-3',
+    apiModel: 'dall-e-3',
+    displayName: 'DALL-E 3',
     multiplier: 1,
+    maxTokens: 15000,
+    category: 'image',
+    isFree: false,
+    estimatedTokens: 15000,
+  },
+
+  // Nano Banana 2 (Google Gemini endpoint)
+  'nano-banana-2': {
+    id: 'nano-banana-2',
+    apiModel: 'gemini-3.1-flash-image-preview',
+    displayName: 'Nano Banana 2',
+    multiplier: 1,
+    maxTokens: 15000,
+    category: 'image',
+    isFree: false,
+    estimatedTokens: 15000,
+    endpoint: 'google',
+  },
+
+  // Vision Model
+  'gpt-4o-vision': {
+    id: 'gpt-4o-vision',
+    apiModel: 'gpt-4o',
+    displayName: 'GPT-4o Vision',
+    multiplier: 2,
     maxTokens: 1500,
     category: 'vision',
     isFree: true,
     estimatedTokens: 1500,
   },
+
+  // Audio Model
   'whisper': {
     id: 'whisper',
     apiModel: 'whisper-1',

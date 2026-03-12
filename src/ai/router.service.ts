@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 const DRAW_KEYWORDS_RU = [
   'нарисуй', 'нарисовать', 'сгенерируй', 'сгенерировать', 'создай изображение',
   'создай картинку', 'создай рисунок', 'генерация изображения', 'рисунок',
-  'изображение', 'картинку', 'фото сгенерируй',
+  'изображение', 'картинку', 'фото сгенерируй', 'картинка',
 ];
 
 const DRAW_KEYWORDS_EN = [
@@ -28,7 +28,7 @@ const CODE_MARKERS = ['```', 'function', 'class ', 'import ', 'const ', 'let ', 
 @Injectable()
 export class RouterService {
   route(type: string, text?: string): string {
-    if (type === 'photo') return 'gemini-vision';
+    if (type === 'photo') return 'gpt-4o-vision';
     if (type === 'voice' || type === 'audio') return 'whisper';
 
     if (text) {
@@ -39,12 +39,12 @@ export class RouterService {
         ...DRAW_KEYWORDS_EN,
       ].some((kw) => lower.includes(kw));
 
-      if (isDrawRequest) return 'imagen-fast';
+      if (isDrawRequest) return 'gpt-image-1-mini';
 
-      if (this.isComplexQuery(text)) return 'gpt-5';
+      if (this.isComplexQuery(text)) return 'gpt-5.1';
     }
 
-    return 'gemini-flash';
+    return 'gpt-4.1-mini';
   }
 
   isComplexQuery(text: string): boolean {

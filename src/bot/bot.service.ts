@@ -11,9 +11,20 @@ import { MESSAGES } from './messages';
 import { buyKeyboard, backToMenuKeyboard } from './keyboards';
 import { ConfigService } from '@nestjs/config';
 
+interface MediaGroupEntry {
+  photos: Buffer[];
+  caption: string;
+  ctx: Context;
+  userId: number;
+  telegramId: bigint;
+  modelId: string;
+  timestamp: number;
+}
+
 @Injectable()
 export class BotService {
   private readonly logger = new Logger(BotService.name);
+  private readonly mediaGroupBuffer = new Map<string, MediaGroupEntry>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -38,6 +49,13 @@ export class BotService {
     const modelId = user.selectedModel ?? this.router.route(type, messageText);
     const model = getModel(modelId);
     const isImageModel = model?.category === 'image';
+
+    // Media group handling for Nano Banana 2 (multiple photos in one message)
+    const mediaGroupId = (ctx.message as any)?.media_group_id;
+    if (type === 'photo' && mediaGroupId && model?.endpoint === 'google') {
+      await this.handleMediaGroupPhoto(ctx, mediaGroupId, user, modelId);
+      return;
+    }
 
     // Estimate cost
     const estimatedCost = this.ai.estimateCost(modelId);
@@ -213,6 +231,143 @@ export class BotService {
         await ctx.reply(MESSAGES.FREE_HINT(remaining), { parse_mode: 'HTML' });
       }
     }
+  }
+
+  private async handleMediaGroupPhoto(
+    ctx: Context,
+    mediaGroupId: string,
+    user: { id: number; balance: number; selectedModel: string | null },
+    modelId: string,
+  ) {
+    const photoBuffer = await this.downloadPhoto(ctx);
+    const existing = this.mediaGroupBuffer.get(mediaGroupId);
+
+    if (existing) {
+      // Add photo to existing group
+      existing.photos.push(photoBuffer);
+    } else {
+      // First photo in group — start buffering
+      const caption = (ctx.message as any)?.caption || '';
+      this.mediaGroupBuffer.set(mediaGroupId, {
+        photos: [photoBuffer],
+        caption,
+        ctx,
+        userId: user.id,
+        telegramId: BigInt(ctx.from!.id),
+        modelId,
+        timestamp: Date.now(),
+      });
+
+      // Wait 2s for remaining photos, then process
+      setTimeout(() => this.processMediaGroup(mediaGroupId), 2000);
+    }
+  }
+
+  private async processMediaGroup(mediaGroupId: string) {
+    const group = this.mediaGroupBuffer.get(mediaGroupId);
+    if (!group) return;
+    this.mediaGroupBuffer.delete(mediaGroupId);
+
+    const { ctx, userId, modelId } = group;
+    const isAdmin = ctx.from!.id.toString() === this.config.get('ADMIN_TELEGRAM_ID');
+    const estimatedCost = this.ai.estimateCost(modelId);
+
+    // Balance/free check
+    let isFree = false;
+    const model = getModel(modelId);
+    if (isAdmin) {
+      isFree = true;
+    } else if (model?.isFree) {
+      const freeCheck = await this.checkFreeLimit(userId);
+      isFree = freeCheck.allowed;
+      if (!isFree && (await this.getUserBalance(userId)) < estimatedCost) {
+        await ctx.reply(MESSAGES.NO_BALANCE, { parse_mode: 'HTML', ...buyKeyboard() });
+        return;
+      }
+    } else {
+      if ((await this.getUserBalance(userId)) < estimatedCost) {
+        await ctx.reply(MESSAGES.NO_BALANCE, { parse_mode: 'HTML', ...buyKeyboard() });
+        return;
+      }
+    }
+
+    const statusMsg = await ctx.reply('🎨 Генерирую изображение... Это может занять 10-30 секунд ⏳');
+
+    try {
+      // Build parts: caption + all photos
+      const parts: any[] = [];
+      if (group.caption) {
+        parts.push({ text: group.caption });
+      } else {
+        parts.push({ text: 'Edit these images' });
+      }
+      for (const photo of group.photos) {
+        parts.push({
+          inline_data: {
+            mime_type: 'image/jpeg',
+            data: photo.toString('base64'),
+          },
+        });
+      }
+
+      const aiResponse = await this.ai.generateImageGeminiRaw(parts);
+
+      // Deduct tokens
+      const actualCost = aiResponse.totalCost;
+      let tokensDeducted = false;
+      if (!isFree && !isAdmin) {
+        const deducted = await this.deductTokens(userId, actualCost);
+        if (!deducted) {
+          await ctx.reply(MESSAGES.NO_BALANCE, { parse_mode: 'HTML', ...buyKeyboard() });
+          try { await ctx.telegram.deleteMessage(ctx.chat!.id, statusMsg.message_id); } catch {}
+          return;
+        }
+        tokensDeducted = true;
+      }
+
+      // Save usage (one request for all photos)
+      await this.prisma.usage.create({
+        data: {
+          userId,
+          model: modelId,
+          inputTokens: aiResponse.inputTokens,
+          outputTokens: aiResponse.outputTokens,
+          balanceCost: actualCost,
+          responseTime: aiResponse.responseTime,
+          isFree,
+        },
+      });
+
+      // Send response
+      try {
+        if (aiResponse.imageBuffer) {
+          await ctx.replyWithPhoto({ source: aiResponse.imageBuffer });
+        } else if (aiResponse.text) {
+          await ctx.reply(aiResponse.text, { parse_mode: 'HTML' });
+        } else {
+          await ctx.reply('😔 AI вернул пустой ответ. Попробуйте переформулировать запрос.', backToMenuKeyboard());
+        }
+      } catch (sendErr: any) {
+        if (sendErr.message?.includes('413') || sendErr.message?.includes('Too Large')) {
+          if (aiResponse.imageBuffer) {
+            await ctx.replyWithDocument({ source: aiResponse.imageBuffer, filename: 'image.png' });
+          }
+        } else {
+          if (tokensDeducted) await this.refundTokens(userId, actualCost);
+          await ctx.reply('😔 Что-то пошло не так.' + (tokensDeducted ? '\n✅ Токены возвращены.' : ''), backToMenuKeyboard());
+        }
+      }
+    } catch (err) {
+      this.logger.error('Media group AI call failed', err);
+      await ctx.reply(MESSAGES.ERROR_GENERAL, { parse_mode: 'HTML', ...backToMenuKeyboard() });
+    } finally {
+      try { await ctx.telegram.deleteMessage(ctx.chat!.id, statusMsg.message_id); } catch {}
+    }
+  }
+
+  private async getUserBalance(userId: number): Promise<number> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { balance: true } });
+    return user?.balance ?? 0;
   }
 
   async checkFreeLimit(userId: number): Promise<{ allowed: boolean; remaining: number }> {

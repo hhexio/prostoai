@@ -101,12 +101,9 @@ export class AiService {
     const model = getModel(modelId);
     if (!model) throw new Error(`Unknown model: ${modelId}`);
 
-    const startTime = Date.now();
-
     // Build parts array
     const parts: any[] = [{ text: prompt }];
 
-    // If user sent a photo for editing, include it
     if (imageBase64) {
       parts.push({
         inline_data: {
@@ -116,10 +113,28 @@ export class AiService {
       });
     }
 
+    return this.callGeminiWithParts(parts, model.apiModel, model.estimatedTokens);
+  }
+
+  async generateImageGeminiRaw(parts: any[]): Promise<AiResponse> {
+    const model = getModel('nano-banana-2');
+    if (!model) throw new Error('nano-banana-2 model not found');
+
+    return this.callGeminiWithParts(parts, model.apiModel, model.estimatedTokens, 120000);
+  }
+
+  private async callGeminiWithParts(
+    parts: any[],
+    apiModel: string,
+    estimatedTokens: number,
+    timeout = 60000,
+  ): Promise<AiResponse> {
+    const startTime = Date.now();
+
     try {
       const response = await firstValueFrom(
         this.httpService.post(
-          `https://api.proxyapi.ru/google/v1beta/models/${model.apiModel}:generateContent`,
+          `https://api.proxyapi.ru/google/v1beta/models/${apiModel}:generateContent`,
           {
             contents: [{ parts }],
             generationConfig: {
@@ -131,12 +146,11 @@ export class AiService {
               Authorization: `Bearer ${this.apiKey}`,
               'Content-Type': 'application/json',
             },
-            timeout: 60000,
+            timeout,
           },
         ),
       );
 
-      // Parse response - Gemini returns parts with inline_data for images
       const data = response.data;
       let imageBuffer: Buffer | null = null;
       let textResponse: string | null = null;
@@ -146,10 +160,8 @@ export class AiService {
       if (data.candidates && data.candidates[0]?.content?.parts) {
         for (const part of data.candidates[0].content.parts) {
           if (part.inlineData) {
-            // Gemini API uses camelCase: inlineData, not inline_data
             imageBuffer = Buffer.from(part.inlineData.data, 'base64');
           } else if (part.inline_data) {
-            // Also handle snake_case variant
             imageBuffer = Buffer.from(part.inline_data.data, 'base64');
           }
           if (part.text) {
@@ -158,7 +170,6 @@ export class AiService {
         }
         this.logger.debug(`Gemini parsed: hasImage=${!!imageBuffer}, hasText=${!!textResponse}, parts=${data.candidates[0].content.parts.length}`);
       } else {
-        // Log unexpected response structure
         this.logger.warn('Gemini: no candidates/parts in response. ' +
           `candidates=${!!data.candidates}, ` +
           `blockReason=${data.promptFeedback?.blockReason ?? 'none'}, ` +
@@ -173,8 +184,8 @@ export class AiService {
         imageBuffer: imageBuffer ?? undefined,
         text: textResponse ?? undefined,
         inputTokens: 0,
-        outputTokens: model.estimatedTokens,
-        totalCost: model.estimatedTokens,
+        outputTokens: estimatedTokens,
+        totalCost: estimatedTokens,
         responseTime: Date.now() - startTime,
       };
     } catch (err) {

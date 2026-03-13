@@ -88,15 +88,25 @@ export const TOKEN_PACKAGES: PackageConfig[] = [
 
 export function buyKeyboard() {
   return Markup.inlineKeyboard([
+    // Expiring (30 days)
     [
-      Markup.button.callback('💰 Starter 100k — 99₽', 'buy_starter'),
-      Markup.button.callback('💎 Basic 250k — 199₽', 'buy_basic'),
+      Markup.button.callback('💰 Starter 100k — 99₽ (30д)', 'buy_starter'),
+      Markup.button.callback('💎 Basic 250k — 199₽ (30д)', 'buy_basic'),
     ],
     [
-      Markup.button.callback('⭐ Standard 500k — 299₽', 'buy_standard'),
-      Markup.button.callback('🚀 Pro 1.5M — 690₽', 'buy_pro'),
+      Markup.button.callback('⭐ Standard 500k — 299₽ (30д)', 'buy_standard'),
+      Markup.button.callback('🚀 Pro 1.5M — 690₽ (30д)', 'buy_pro'),
     ],
-    [Markup.button.callback('👑 Ultra 5M — 1990₽', 'buy_ultra')],
+    [Markup.button.callback('👑 Ultra 5M — 1990₽ (30д)', 'buy_ultra')],
+    // Permanent
+    [
+      Markup.button.callback('💚 Mini 50k — 79₽ (∞)', 'buy_mini'),
+      Markup.button.callback('💙 Medium 200k — 249₽ (∞)', 'buy_medium'),
+    ],
+    [
+      Markup.button.callback('💜 Large 500k — 499₽ (∞)', 'buy_large'),
+      Markup.button.callback('🧡 XL 1000k — 649₽ (∞)', 'buy_xl'),
+    ],
     [Markup.button.callback('◀️ В главное меню', 'back_menu')],
   ]);
 }

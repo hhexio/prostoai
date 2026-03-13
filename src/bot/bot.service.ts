@@ -189,26 +189,30 @@ export class BotService {
     });
 
     // Send response with 413 handling
+    let responseSent = false;
     try {
       if (aiResponse.imageBuffer) {
         await ctx.replyWithPhoto({ source: aiResponse.imageBuffer });
+        responseSent = true;
       } else if (aiResponse.imageUrl) {
         await ctx.replyWithPhoto({ url: aiResponse.imageUrl });
+        responseSent = true;
       } else if (aiResponse.text) {
         await ctx.reply(aiResponse.text, { parse_mode: 'HTML' });
+        responseSent = true;
       } else {
-        this.logger.warn(`Empty AI response for model ${modelId}: ${JSON.stringify({ hasBuffer: !!aiResponse.imageBuffer, hasUrl: !!aiResponse.imageUrl, hasText: !!aiResponse.text })}`);
+        this.logger.warn(`Empty AI response for model ${modelId}`);
         await ctx.reply('😔 AI вернул пустой ответ. Попробуйте переформулировать запрос.', backToMenuKeyboard());
       }
     } catch (err) {
       if (err.message?.includes('413') || err.message?.includes('Too Large')) {
         if (aiResponse.imageBuffer) {
           await ctx.replyWithDocument({ source: aiResponse.imageBuffer, filename: 'image.png' });
+          responseSent = true;
         } else {
           await ctx.reply('Изображение сгенерировано, но слишком большое для отправки. Попробуйте более простой запрос.', backToMenuKeyboard());
         }
       } else {
-        // Refund tokens if deducted
         if (tokensDeducted) {
           await this.refundTokens(user.id, actualCost);
         }
@@ -223,6 +227,11 @@ export class BotService {
 
     // Delete status message
     try { await ctx.telegram.deleteMessage(ctx.chat!.id, statusMsg.message_id); } catch {}
+
+    // Always show back_menu after successful AI response
+    if (responseSent) {
+      await ctx.reply('👆 Готово!', backToMenuKeyboard());
+    }
 
     // Free hint (only for non-admin free requests)
     if (isFree && !isAdmin) {

@@ -353,10 +353,23 @@ export class BotUpdate {
 
   @Action('back_menu')
   async onBackMenu(@Ctx() ctx: Context) {
-    await ctx.editMessageText('🤖 <b>Выберите категорию:</b>', {
-      parse_mode: 'HTML',
-      ...mainMenuKeyboard(),
-    });
+    const telegramId = BigInt(ctx.from!.id);
+    const user = await this.users.findOrCreate(telegramId);
+
+    const text = MESSAGES.WELCOME_BACK(user.balance);
+
+    try {
+      await ctx.editMessageText(text, {
+        parse_mode: 'HTML',
+        ...mainMenuKeyboard(),
+      });
+    } catch {
+      // editMessageText fails if original message had an image
+      await ctx.reply(text, {
+        parse_mode: 'HTML',
+        ...mainMenuKeyboard(),
+      });
+    }
   }
 
   // --- Message Handlers ---

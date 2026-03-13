@@ -1,11 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRedis } from '@nestjs-modules/ioredis';
 import Redis from 'ioredis';
-import { Context } from 'telegraf';
+import { Context, Markup } from 'telegraf';
 import { PrismaService } from '../prisma/prisma.service';
 import { AiService } from '../ai/ai.service';
 import { RouterService } from '../ai/router.service';
 import { UsersService } from '../users/users.service';
+import { ReferralService } from '../users/referral.service';
 import { getModel } from '../ai/models.config';
 import { MESSAGES } from './messages';
 import { buyKeyboard, backToMenuKeyboard } from './keyboards';
@@ -21,16 +22,29 @@ interface MediaGroupEntry {
   timestamp: number;
 }
 
+const MAX_TEXT_LENGTH = 4000;
+const MAX_PHOTO_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_VOICE_DURATION = 300; // 5 minutes
+const MAX_MEDIA_GROUP_PHOTOS = 5;
+
 @Injectable()
 export class BotService {
   private readonly logger = new Logger(BotService.name);
   private readonly mediaGroupBuffer = new Map<string, MediaGroupEntry>();
+
+  private readonly BLOCKED_PATTERNS = [
+    /child\s*(porn|sex|nude)/i,
+    /детск\w*\s*(порн|секс|голы)/i,
+    /как\s*(сделать|создать|изготовить)\s*(бомб|взрывч|оружи|наркотик)/i,
+    /how\s*to\s*(make|build|create)\s*(bomb|weapon|drug|explosive)/i,
+  ];
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly ai: AiService,
     private readonly router: RouterService,
     private readonly users: UsersService,
+    private readonly referral: ReferralService,
     private readonly config: ConfigService,
     @InjectRedis() private readonly redis: Redis,
   ) {}
@@ -43,12 +57,71 @@ export class BotService {
       ctx.from!.first_name,
     );
 
-    const messageText = type === 'text' ? (ctx.message as any)?.text : undefined;
+    const isAdmin = ctx.from!.id.toString() === this.config.get('ADMIN_TELEGRAM_ID');
+
+    // Rate limit check (admin exempt)
+    if (!isAdmin) {
+      const allowed = await this.checkRateLimit(user.id, ctx);
+      if (!allowed) return;
+    }
+
+    // Input validation
+    let messageText = type === 'text' ? (ctx.message as any)?.text : undefined;
+
+    // Text length validation
+    if (messageText && messageText.length > MAX_TEXT_LENGTH) {
+      messageText = messageText.substring(0, MAX_TEXT_LENGTH);
+      await ctx.reply('⚠️ Сообщение обрезано до 4000 символов.');
+    }
+
+    // Photo size validation
+    if (type === 'photo') {
+      const photos = (ctx.message as any)?.photo;
+      if (photos) {
+        const largest = photos[photos.length - 1];
+        if (largest.file_size && largest.file_size > MAX_PHOTO_SIZE) {
+          await ctx.reply(
+            '⚠️ Фото слишком большое (макс. 5 МБ). Отправьте фото меньшего размера.',
+            backToMenuKeyboard(),
+          );
+          return;
+        }
+      }
+    }
+
+    // Voice duration validation
+    if (type === 'voice' || type === 'audio') {
+      const voice = (ctx.message as any)?.voice || (ctx.message as any)?.audio;
+      if (voice && voice.duration > MAX_VOICE_DURATION) {
+        await ctx.reply(
+          '⚠️ Аудио слишком длинное (макс. 5 минут).',
+          backToMenuKeyboard(),
+        );
+        return;
+      }
+    }
+
+    // Content filter
+    const textToCheck = messageText || (ctx.message as any)?.caption || '';
+    if (textToCheck && this.isBlockedContent(textToCheck)) {
+      await ctx.reply(
+        '🚫 Этот запрос нарушает правила использования сервиса.',
+        backToMenuKeyboard(),
+      );
+      this.logger.warn(`Blocked content from user ${user.telegramId}`);
+      return;
+    }
 
     // Determine model
     const modelId = user.selectedModel ?? this.router.route(type, messageText);
     const model = getModel(modelId);
     const isImageModel = model?.category === 'image';
+
+    // Image-specific rate limit
+    if (!isAdmin && isImageModel) {
+      const imgAllowed = await this.checkImageRateLimit(user.id, ctx);
+      if (!imgAllowed) return;
+    }
 
     // Media group handling for Nano Banana 2 (multiple photos in one message)
     const mediaGroupId = (ctx.message as any)?.media_group_id;
@@ -60,36 +133,13 @@ export class BotService {
     // Estimate cost
     const estimatedCost = this.ai.estimateCost(modelId);
 
-    // Admin bypass — never charged
-    const isAdmin = ctx.from!.id.toString() === this.config.get('ADMIN_TELEGRAM_ID');
-
-    // Fix: Check free limit FIRST, then balance
-    let isFree = false;
-    if (isAdmin) {
-      isFree = true; // Admin always free
-    } else if (model?.isFree) {
-      const freeCheck = await this.checkFreeLimit(user.id);
-      if (freeCheck.allowed) {
-        isFree = true;
-      } else {
-        // Free limit exhausted, fall through to balance check
-        if (user.balance < estimatedCost) {
-          await ctx.reply(MESSAGES.NO_BALANCE, {
-            parse_mode: 'HTML',
-            ...buyKeyboard(),
-          });
-          return;
-        }
-      }
-    } else {
-      // Not a free model — check balance
-      if (user.balance < estimatedCost) {
-        await ctx.reply(MESSAGES.NO_BALANCE, {
-          parse_mode: 'HTML',
-          ...buyKeyboard(),
-        });
-        return;
-      }
+    // Balance check (admin exempt)
+    if (!isAdmin && user.balance < estimatedCost) {
+      await ctx.reply(MESSAGES.NO_BALANCE, {
+        parse_mode: 'HTML',
+        ...buyKeyboard(),
+      });
+      return;
     }
 
     // Send status message
@@ -117,7 +167,6 @@ export class BotService {
     let aiResponse;
     try {
       if (type === 'photo' && model?.endpoint === 'google') {
-        // Nano Banana 2 image editing: photo + caption
         const photoBuffer = await this.downloadPhoto(ctx);
         const imageBase64 = photoBuffer.toString('base64');
         const caption = (ctx.message as any)?.caption || 'Edit this image';
@@ -130,7 +179,6 @@ export class BotService {
       } else if (type === 'voice' || type === 'audio') {
         const audioBuffer = await this.downloadVoice(ctx);
         aiResponse = await this.ai.transcribeAudio(audioBuffer);
-        // After transcription, send text response too
         if (aiResponse.audioText) {
           const textResponse = await this.ai.chat(
             user.selectedModel ?? 'gpt-4.1-mini',
@@ -155,14 +203,14 @@ export class BotService {
       else if (err.message === 'SERVICE_UNAVAILABLE') errorMsg = MESSAGES.ERROR_SERVICE;
       await ctx.reply(errorMsg, { parse_mode: 'HTML', ...backToMenuKeyboard() });
       try { await ctx.telegram.deleteMessage(ctx.chat!.id, statusMsg.message_id); } catch {}
-      this.logger.error('AI call failed', err);
+      this.logger.error(`AI error: user=${user.telegramId}, model=${modelId}`);
       return;
     }
 
-    // Deduct tokens (if not free and not admin)
+    // Deduct tokens (if not admin)
     const actualCost = aiResponse.totalCost;
     let tokensDeducted = false;
-    if (!isFree && !isAdmin) {
+    if (!isAdmin) {
       const deducted = await this.deductTokens(user.id, actualCost);
       if (!deducted) {
         await ctx.reply(MESSAGES.NO_BALANCE, {
@@ -184,7 +232,7 @@ export class BotService {
         outputTokens: aiResponse.outputTokens,
         balanceCost: actualCost,
         responseTime: aiResponse.responseTime,
-        isFree,
+        isFree: isAdmin,
       },
     });
 
@@ -201,7 +249,7 @@ export class BotService {
         await ctx.reply(aiResponse.text, { parse_mode: 'HTML' });
         responseSent = true;
       } else {
-        this.logger.warn(`Empty AI response for model ${modelId}`);
+        this.logger.warn(`Empty AI response: user=${user.telegramId}, model=${modelId}`);
         await ctx.reply('😔 AI вернул пустой ответ. Попробуйте переформулировать запрос.', backToMenuKeyboard());
       }
     } catch (err) {
@@ -221,7 +269,7 @@ export class BotService {
           (tokensDeducted ? '✅ Токены возвращены на ваш баланс.' : ''),
           { parse_mode: 'HTML', ...backToMenuKeyboard() },
         );
-        this.logger.error('Failed to send response', err);
+        this.logger.error(`Send error: user=${user.telegramId}, model=${modelId}`);
       }
     }
 
@@ -233,12 +281,10 @@ export class BotService {
       await ctx.reply('👆 Готово!', backToMenuKeyboard());
     }
 
-    // Free hint (only for non-admin free requests)
-    if (isFree && !isAdmin) {
-      const remaining = await this.getFreeRemaining(user.id);
-      if (remaining <= 3) {
-        await ctx.reply(MESSAGES.FREE_HINT(remaining), { parse_mode: 'HTML' });
-      }
+    // Check if this is user's first request — apply deferred referral bonus
+    const usageCount = await this.prisma.usage.count({ where: { userId: user.id } });
+    if (usageCount === 1) {
+      await this.referral.applyReferralBonus(user.id);
     }
   }
 
@@ -252,10 +298,12 @@ export class BotService {
     const existing = this.mediaGroupBuffer.get(mediaGroupId);
 
     if (existing) {
-      // Add photo to existing group
+      // Limit photos
+      if (existing.photos.length >= MAX_MEDIA_GROUP_PHOTOS) {
+        return;
+      }
       existing.photos.push(photoBuffer);
     } else {
-      // First photo in group — start buffering
       const caption = (ctx.message as any)?.caption || '';
       this.mediaGroupBuffer.set(mediaGroupId, {
         photos: [photoBuffer],
@@ -267,7 +315,6 @@ export class BotService {
         timestamp: Date.now(),
       });
 
-      // Wait 2s for remaining photos, then process
       setTimeout(() => this.processMediaGroup(mediaGroupId), 2000);
     }
   }
@@ -281,29 +328,21 @@ export class BotService {
     const isAdmin = ctx.from!.id.toString() === this.config.get('ADMIN_TELEGRAM_ID');
     const estimatedCost = this.ai.estimateCost(modelId);
 
-    // Balance/free check
-    let isFree = false;
-    const model = getModel(modelId);
-    if (isAdmin) {
-      isFree = true;
-    } else if (model?.isFree) {
-      const freeCheck = await this.checkFreeLimit(userId);
-      isFree = freeCheck.allowed;
-      if (!isFree && (await this.getUserBalance(userId)) < estimatedCost) {
-        await ctx.reply(MESSAGES.NO_BALANCE, { parse_mode: 'HTML', ...buyKeyboard() });
-        return;
-      }
-    } else {
-      if ((await this.getUserBalance(userId)) < estimatedCost) {
+    // Balance check (admin exempt)
+    if (!isAdmin) {
+      const balance = await this.getUserBalance(userId);
+      if (balance < estimatedCost) {
         await ctx.reply(MESSAGES.NO_BALANCE, { parse_mode: 'HTML', ...buyKeyboard() });
         return;
       }
     }
 
+    // Note if photos were capped
+    const wasCapped = group.photos.length >= MAX_MEDIA_GROUP_PHOTOS;
+
     const statusMsg = await ctx.reply('🎨 Генерирую изображение... Это может занять 10-30 секунд ⏳');
 
     try {
-      // Build parts: caption + all photos
       const parts: any[] = [];
       if (group.caption) {
         parts.push({ text: group.caption });
@@ -324,7 +363,7 @@ export class BotService {
       // Deduct tokens
       const actualCost = aiResponse.totalCost;
       let tokensDeducted = false;
-      if (!isFree && !isAdmin) {
+      if (!isAdmin) {
         const deducted = await this.deductTokens(userId, actualCost);
         if (!deducted) {
           await ctx.reply(MESSAGES.NO_BALANCE, { parse_mode: 'HTML', ...buyKeyboard() });
@@ -334,7 +373,7 @@ export class BotService {
         tokensDeducted = true;
       }
 
-      // Save usage (one request for all photos)
+      // Save usage
       await this.prisma.usage.create({
         data: {
           userId,
@@ -343,7 +382,7 @@ export class BotService {
           outputTokens: aiResponse.outputTokens,
           balanceCost: actualCost,
           responseTime: aiResponse.responseTime,
-          isFree,
+          isFree: isAdmin,
         },
       });
 
@@ -366,44 +405,71 @@ export class BotService {
           await ctx.reply('😔 Что-то пошло не так.' + (tokensDeducted ? '\n✅ Токены возвращены.' : ''), backToMenuKeyboard());
         }
       }
+
+      if (wasCapped) {
+        await ctx.reply('⚠️ Обработаны первые 5 фото. Максимум 5 фото в одном запросе.');
+      }
+
+      await ctx.reply('👆 Готово!', backToMenuKeyboard());
+
+      // Check first request for referral bonus
+      const usageCount = await this.prisma.usage.count({ where: { userId } });
+      if (usageCount === 1) {
+        await this.referral.applyReferralBonus(userId);
+      }
     } catch (err) {
-      this.logger.error('Media group AI call failed', err);
+      this.logger.error(`Media group error: user=${group.telegramId}, model=${modelId}`);
       await ctx.reply(MESSAGES.ERROR_GENERAL, { parse_mode: 'HTML', ...backToMenuKeyboard() });
     } finally {
       try { await ctx.telegram.deleteMessage(ctx.chat!.id, statusMsg.message_id); } catch {}
     }
   }
 
+  // --- Rate Limiting ---
+
+  private async checkRateLimit(userId: number, ctx: Context): Promise<boolean> {
+    const key = `ratelimit:${userId}`;
+    const current = await this.redis.incr(key);
+    if (current === 1) {
+      await this.redis.expire(key, 60);
+    }
+    if (current > 10) {
+      await ctx.reply(
+        '⏳ Слишком много запросов. Подождите минуту.',
+        backToMenuKeyboard(),
+      );
+      return false;
+    }
+    return true;
+  }
+
+  private async checkImageRateLimit(userId: number, ctx: Context): Promise<boolean> {
+    const key = `ratelimit:img:${userId}`;
+    const current = await this.redis.incr(key);
+    if (current === 1) {
+      await this.redis.expire(key, 60);
+    }
+    if (current > 3) {
+      await ctx.reply(
+        '⏳ Генерация картинок ограничена: максимум 3 в минуту. Подождите.',
+        backToMenuKeyboard(),
+      );
+      return false;
+    }
+    return true;
+  }
+
+  // --- Content Filter ---
+
+  private isBlockedContent(text: string): boolean {
+    return this.BLOCKED_PATTERNS.some((pattern) => pattern.test(text));
+  }
+
+  // --- Helpers ---
+
   private async getUserBalance(userId: number): Promise<number> {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { balance: true } });
     return user?.balance ?? 0;
-  }
-
-  async checkFreeLimit(userId: number): Promise<{ allowed: boolean; remaining: number }> {
-    const today = new Date().toISOString().split('T')[0];
-    const key = `free:${userId}:${today}`;
-    const limit = Number(this.config.get('FREE_TEXT_LIMIT', 10));
-
-    const current = await this.redis.incr(key);
-    if (current === 1) {
-      const secondsLeft = this.secondsUntilMidnight();
-      await this.redis.expire(key, secondsLeft);
-    }
-
-    if (current > limit) {
-      await this.redis.decr(key);
-      return { allowed: false, remaining: 0 };
-    }
-
-    return { allowed: true, remaining: limit - current };
-  }
-
-  async getFreeRemaining(userId: number): Promise<number> {
-    const today = new Date().toISOString().split('T')[0];
-    const key = `free:${userId}:${today}`;
-    const limit = Number(this.config.get('FREE_TEXT_LIMIT', 10));
-    const used = Number(await this.redis.get(key) ?? 0);
-    return Math.max(0, limit - used);
   }
 
   async refundTokens(userId: number, amount: number): Promise<void> {
@@ -434,6 +500,12 @@ export class BotService {
 
   async deductTokens(userId: number, cost: number): Promise<boolean> {
     return this.prisma.$transaction(async (tx) => {
+      // Explicit balance check inside transaction
+      const user = await tx.user.findUnique({ where: { id: userId } });
+      if (!user || user.balance < cost) {
+        return false;
+      }
+
       const packages = await tx.tokenPackage.findMany({
         where: {
           userId,
@@ -489,12 +561,5 @@ export class BotService {
     const response = await fetch(link.href);
     const arrayBuffer = await response.arrayBuffer();
     return Buffer.from(arrayBuffer);
-  }
-
-  private secondsUntilMidnight(): number {
-    const now = new Date();
-    const midnight = new Date();
-    midnight.setHours(24, 0, 0, 0);
-    return Math.floor((midnight.getTime() - now.getTime()) / 1000);
   }
 }

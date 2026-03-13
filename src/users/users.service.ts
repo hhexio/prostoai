@@ -13,25 +13,52 @@ export class UsersService {
     private readonly config: ConfigService,
   ) {}
 
+  private readonly STARTER_BONUS = 15000;
+
   async findOrCreate(
     telegramId: bigint,
     username?: string,
     firstName?: string,
   ) {
-    return this.prisma.user.upsert({
+    const existing = await this.prisma.user.findUnique({
       where: { telegramId },
-      create: {
+      include: { packages: true },
+    });
+
+    if (existing) {
+      return this.prisma.user.update({
+        where: { telegramId },
+        data: {
+          username: username ?? undefined,
+          firstName: firstName ?? undefined,
+        },
+        include: { packages: true },
+      });
+    }
+
+    // Create new user with starter bonus
+    const user = await this.prisma.user.create({
+      data: {
         telegramId,
         username,
         firstName,
         referralCode: uuidv4(),
-      },
-      update: {
-        username: username ?? undefined,
-        firstName: firstName ?? undefined,
+        balance: this.STARTER_BONUS,
       },
       include: { packages: true },
     });
+
+    // Create starter token package
+    await this.prisma.tokenPackage.create({
+      data: {
+        userId: user.id,
+        tokens: this.STARTER_BONUS,
+        tokensUsed: 0,
+        type: 'PERMANENT',
+      },
+    });
+
+    return user;
   }
 
   async getBalance(userId: number): Promise<{ total: number; expiring: number; permanent: number }> {

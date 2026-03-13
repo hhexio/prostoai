@@ -17,9 +17,6 @@ model User {
   referredBy          Int?
   selectedModel       String?
   isAdmin             Boolean        @default(false)
-  freeUsedToday       Int            @default(0)
-  freeImagesUsedToday Int            @default(0)
-  freeResetAt         DateTime?
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
   packages            TokenPackage[]
@@ -94,8 +91,9 @@ model Referral {
   referrerId  Int
   referrer    User     @relation("ReferrerRelation", fields: [referrerId], references: [id])
   referredId  Int      @unique
-  bonusTokens Int      @default(50000)
-  createdAt   DateTime @default(now())
+  bonusTokens  Int      @default(50000)
+  bonusApplied Boolean  @default(false)
+  createdAt    DateTime @default(now())
 
   @@index([referrerId])
 }

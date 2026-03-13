@@ -59,13 +59,20 @@ export class BotUpdate {
       await this.referral.processReferral(user.id, refCode, ctx);
     }
 
-    const botUsername = ctx.botInfo.username;
-    const referralLink = `https://t.me/${botUsername}?start=ref_${user.referralCode}`;
+    // Check if user is new (created within last 5 seconds)
+    const isNew = Date.now() - user.createdAt.getTime() < 5000;
 
-    await ctx.reply(MESSAGES.WELCOME(referralLink), {
-      parse_mode: 'HTML',
-      ...mainMenuKeyboard(),
-    });
+    if (isNew) {
+      await ctx.reply(MESSAGES.WELCOME_NEW, {
+        parse_mode: 'HTML',
+        ...mainMenuKeyboard(),
+      });
+    } else {
+      await ctx.reply(MESSAGES.WELCOME_BACK(user.balance), {
+        parse_mode: 'HTML',
+        ...mainMenuKeyboard(),
+      });
+    }
   }
 
   @Help()
@@ -77,10 +84,9 @@ export class BotUpdate {
   async onBalance(@Ctx() ctx: Context) {
     const telegramId = BigInt(ctx.from!.id);
     const user = await this.users.findOrCreate(telegramId);
-    const textLeft = await this.botService.getFreeRemaining(user.id);
 
     await ctx.reply(
-      MESSAGES.BALANCE(user.balance, textLeft),
+      MESSAGES.BALANCE(user.balance),
       {
         parse_mode: 'HTML',
         ...profileKeyboard(),
@@ -244,10 +250,9 @@ export class BotUpdate {
   async onProfile(@Ctx() ctx: Context) {
     const telegramId = BigInt(ctx.from!.id);
     const user = await this.users.findOrCreate(telegramId);
-    const textLeft = await this.botService.getFreeRemaining(user.id);
 
     await ctx.editMessageText(
-      MESSAGES.BALANCE(user.balance, textLeft),
+      MESSAGES.BALANCE(user.balance),
       {
         parse_mode: 'HTML',
         ...profileKeyboard(),
@@ -310,7 +315,7 @@ export class BotUpdate {
   @Action(/^pay_card_(.+)$/)
   async onPayCard(@Ctx() ctx: Context) {
     await ctx.editMessageText(
-      '💳 Оплата картой скоро будет доступна!\n\nПока можно приобрести пакеты до 299₽ за Telegram Stars ⭐\nВыберите другой пакет через /buy',
+      '💳 Оплата картой скоро будет доступна!\n\nПока можно приобрести пакеты до 399₽ за Telegram Stars ⭐\nВыберите другой пакет через /buy',
       { parse_mode: 'HTML', ...backToMenuKeyboard() },
     );
   }

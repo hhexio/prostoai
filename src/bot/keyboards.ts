@@ -20,7 +20,7 @@ export function mainMenuKeyboard() {
 export function chatModelsKeyboard() {
   return Markup.inlineKeyboard([
     [
-      Markup.button.callback('⚡ GPT-4.1 Mini (FREE)', 'model_gpt-4.1-mini'),
+      Markup.button.callback('⚡ GPT-4.1 Mini', 'model_gpt-4.1-mini'),
       Markup.button.callback('🧠 GPT-5 Mini', 'model_gpt-5-mini'),
     ],
     [
@@ -34,7 +34,7 @@ export function chatModelsKeyboard() {
 export function imageModelsKeyboard() {
   return Markup.inlineKeyboard([
     [
-      Markup.button.callback('🖼 GPT Image Mini (FREE)', 'model_gpt-image-1-mini'),
+      Markup.button.callback('🖼 GPT Image Mini', 'model_gpt-image-1-mini'),
       Markup.button.callback('🍌 Nano Banana 2', 'model_nano-banana-2'),
     ],
     [
@@ -50,7 +50,7 @@ export function imageModelsKeyboard() {
 
 export function visionModelsKeyboard() {
   return Markup.inlineKeyboard([
-    [Markup.button.callback('📸 GPT-4o Vision (FREE)', 'model_gpt-4o-vision')],
+    [Markup.button.callback('📸 GPT-4o Vision', 'model_gpt-4o-vision')],
     [Markup.button.callback('« Назад', 'back_menu')],
   ]);
 }

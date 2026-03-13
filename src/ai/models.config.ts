@@ -5,7 +5,6 @@ export interface ModelConfig {
   multiplier: number;
   maxTokens: number;
   category: 'chat' | 'image' | 'vision' | 'audio';
-  isFree: boolean;
   estimatedTokens: number;
   endpoint?: string; // undefined = openai, "google" = Gemini API
 }
@@ -19,7 +18,7 @@ export const MODELS: Record<string, ModelConfig> = {
     multiplier: 1,
     maxTokens: 2000,
     category: 'chat',
-    isFree: true,
+
     estimatedTokens: 1500,
   },
   'gpt-5-mini': {
@@ -29,7 +28,7 @@ export const MODELS: Record<string, ModelConfig> = {
     multiplier: 1.5,
     maxTokens: 2000,
     category: 'chat',
-    isFree: false,
+
     estimatedTokens: 2000,
   },
   'gpt-4o': {
@@ -39,7 +38,7 @@ export const MODELS: Record<string, ModelConfig> = {
     multiplier: 2,
     maxTokens: 2000,
     category: 'chat',
-    isFree: false,
+
     estimatedTokens: 2000,
   },
   'gpt-5.1': {
@@ -49,7 +48,7 @@ export const MODELS: Record<string, ModelConfig> = {
     multiplier: 3.3,
     maxTokens: 2000,
     category: 'chat',
-    isFree: false,
+
     estimatedTokens: 2000,
   },
 
@@ -61,7 +60,7 @@ export const MODELS: Record<string, ModelConfig> = {
     multiplier: 1,
     maxTokens: 8000,
     category: 'image',
-    isFree: true,
+
     estimatedTokens: 8000,
   },
   'gpt-image-1': {
@@ -71,7 +70,7 @@ export const MODELS: Record<string, ModelConfig> = {
     multiplier: 1,
     maxTokens: 15000,
     category: 'image',
-    isFree: false,
+
     estimatedTokens: 15000,
   },
   'gpt-image-1.5': {
@@ -81,7 +80,7 @@ export const MODELS: Record<string, ModelConfig> = {
     multiplier: 1,
     maxTokens: 30000,
     category: 'image',
-    isFree: false,
+
     estimatedTokens: 30000,
   },
   'dall-e-3': {
@@ -91,7 +90,7 @@ export const MODELS: Record<string, ModelConfig> = {
     multiplier: 1,
     maxTokens: 15000,
     category: 'image',
-    isFree: false,
+
     estimatedTokens: 15000,
   },
 
@@ -103,7 +102,7 @@ export const MODELS: Record<string, ModelConfig> = {
     multiplier: 1,
     maxTokens: 15000,
     category: 'image',
-    isFree: false,
+
     estimatedTokens: 15000,
     endpoint: 'google',
   },
@@ -116,7 +115,7 @@ export const MODELS: Record<string, ModelConfig> = {
     multiplier: 2,
     maxTokens: 1500,
     category: 'vision',
-    isFree: true,
+
     estimatedTokens: 1500,
   },
 
@@ -128,7 +127,7 @@ export const MODELS: Record<string, ModelConfig> = {
     multiplier: 1,
     maxTokens: 2000,
     category: 'audio',
-    isFree: false,
+
     estimatedTokens: 2000,
   },
 };

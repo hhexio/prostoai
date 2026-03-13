@@ -249,7 +249,18 @@ export class BotService {
     let responseSent = false;
     try {
       if (aiResponse.imageBuffer) {
-        await ctx.replyWithPhoto({ source: aiResponse.imageBuffer });
+        // 1. Send compressed preview as photo
+        try {
+          await ctx.replyWithPhoto({ source: aiResponse.imageBuffer });
+        } catch (photoErr: any) {
+          this.logger.warn(`Photo preview failed: ${photoErr.message}`);
+        }
+        // 2. Send original as document for full quality
+        const ext = modelId.includes('dall-e') ? 'jpeg' : 'png';
+        await ctx.replyWithDocument(
+          { source: aiResponse.imageBuffer, filename: `${model!.displayName.replace(/\s/g, '_')}.${ext}` },
+          { caption: '🖼 Оригинал в полном качестве' },
+        );
         responseSent = true;
       } else if (aiResponse.imageUrl) {
         await ctx.replyWithPhoto({ url: aiResponse.imageUrl });
@@ -262,24 +273,15 @@ export class BotService {
         await ctx.reply('😔 AI вернул пустой ответ. Попробуйте переформулировать запрос.', backToMenuKeyboard());
       }
     } catch (err) {
-      if (err.message?.includes('413') || err.message?.includes('Too Large')) {
-        if (aiResponse.imageBuffer) {
-          await ctx.replyWithDocument({ source: aiResponse.imageBuffer, filename: 'image.png' });
-          responseSent = true;
-        } else {
-          await ctx.reply('Изображение сгенерировано, но слишком большое для отправки. Попробуйте более простой запрос.', backToMenuKeyboard());
-        }
-      } else {
-        if (tokensDeducted) {
-          await this.refundTokens(user.id, actualCost);
-        }
-        await ctx.reply(
-          '😔 Что-то пошло не так. Попробуйте немного позже.\n\n' +
-          (tokensDeducted ? '✅ Токены возвращены на ваш баланс.' : ''),
-          { parse_mode: 'HTML', ...backToMenuKeyboard() },
-        );
-        this.logger.error(`Send error: user=${user.telegramId}, model=${modelId}`);
+      if (tokensDeducted) {
+        await this.refundTokens(user.id, actualCost);
       }
+      await ctx.reply(
+        '😔 Что-то пошло не так. Попробуйте немного позже.\n\n' +
+        (tokensDeducted ? '✅ Токены возвращены на ваш баланс.' : ''),
+        { parse_mode: 'HTML', ...backToMenuKeyboard() },
+      );
+      this.logger.error(`Send error: user=${user.telegramId}, model=${modelId}`);
     }
 
     // Delete status message
@@ -413,24 +415,31 @@ export class BotService {
         },
       });
 
+      const model = getModel(modelId);
+
       // Send response
       try {
         if (aiResponse.imageBuffer) {
-          await ctx.replyWithPhoto({ source: aiResponse.imageBuffer });
+          // 1. Send compressed preview as photo
+          try {
+            await ctx.replyWithPhoto({ source: aiResponse.imageBuffer });
+          } catch (photoErr: any) {
+            this.logger.warn(`Photo preview failed: ${photoErr.message}`);
+          }
+          // 2. Send original as document for full quality
+          const ext = modelId.includes('dall-e') ? 'jpeg' : 'png';
+          await ctx.replyWithDocument(
+            { source: aiResponse.imageBuffer, filename: `${model?.displayName.replace(/\s/g, '_') ?? modelId}.${ext}` },
+            { caption: '🖼 Оригинал в полном качестве' },
+          );
         } else if (aiResponse.text) {
           await ctx.reply(aiResponse.text, { parse_mode: 'HTML' });
         } else {
           await ctx.reply('😔 AI вернул пустой ответ. Попробуйте переформулировать запрос.', backToMenuKeyboard());
         }
       } catch (sendErr: any) {
-        if (sendErr.message?.includes('413') || sendErr.message?.includes('Too Large')) {
-          if (aiResponse.imageBuffer) {
-            await ctx.replyWithDocument({ source: aiResponse.imageBuffer, filename: 'image.png' });
-          }
-        } else {
-          if (tokensDeducted) await this.refundTokens(userId, actualCost);
-          await ctx.reply('😔 Что-то пошло не так.' + (tokensDeducted ? '\n✅ Токены возвращены.' : ''), backToMenuKeyboard());
-        }
+        if (tokensDeducted) await this.refundTokens(userId, actualCost);
+        await ctx.reply('😔 Что-то пошло не так.' + (tokensDeducted ? '\n✅ Токены возвращены.' : ''), backToMenuKeyboard());
       }
 
       if (wasCapped) {
@@ -441,7 +450,6 @@ export class BotService {
       const updatedUser = await this.prisma.user.findUnique({ where: { id: userId }, select: { balance: true } });
       const remainingBalance = updatedUser?.balance ?? 0;
       const emoji = IMAGE_MODEL_EMOJI[modelId] || '🎨';
-      const model = getModel(modelId);
       await ctx.reply(
         `${emoji} Сгенерировано в ${model?.displayName ?? modelId}\n💰 Стоимость: ${actualCost.toLocaleString('ru-RU')} токенов. Осталось: ${remainingBalance.toLocaleString('ru-RU')} токенов.`,
         Markup.inlineKeyboard([

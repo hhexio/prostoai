@@ -47,7 +47,7 @@ export class AiService {
       const response = await firstValueFrom(
         this.httpService.post(
           `${this.baseUrl}/chat/completions`,
-          { model: model.apiModel, messages, max_tokens: model.maxTokens },
+          { model: model.apiModel, messages, max_completion_tokens: model.maxTokens },
           { headers: this.headers, timeout: 30000 },
         ),
       );
@@ -215,7 +215,7 @@ export class AiService {
                 ],
               },
             ],
-            max_tokens: model.maxTokens,
+            max_completion_tokens: model.maxTokens,
           },
           { headers: this.headers, timeout: 30000 },
         ),

@@ -104,11 +104,14 @@ export class AiService {
         }
       }
 
+      const inputTokens = response.data?.usage?.input_tokens ?? 0;
+      const outputTokens = response.data?.usage?.output_tokens ?? 0;
+
       return {
         imageBuffer,
         imageUrl: imageBuffer ? undefined : imageUrl,
-        inputTokens: 0,
-        outputTokens: 0,
+        inputTokens,
+        outputTokens,
         totalCost: model.estimatedTokens,
         responseTime: Date.now() - start,
       };

@@ -120,6 +120,64 @@ export class AiService {
     }
   }
 
+  async generateImageWithReference(modelId: string, prompt: string, imageBuffer: Buffer): Promise<AiResponse> {
+    const model = getModel(modelId);
+    if (!model) throw new Error(`Unknown model: ${modelId}`);
+
+    const start = Date.now();
+    try {
+      const form = new FormData();
+      form.append('model', model.apiModel);
+      form.append('prompt', prompt);
+      form.append('image[]', imageBuffer, { filename: 'image.png', contentType: 'image/png' });
+      form.append('n', '1');
+      form.append('size', '1024x1024');
+
+      const response = await firstValueFrom(
+        this.httpService.post(
+          `${this.baseUrl}/images/edits`,
+          form,
+          {
+            headers: {
+              ...this.headers,
+              ...form.getHeaders(),
+            },
+            timeout: 120000,
+          },
+        ),
+      );
+
+      const data = response.data?.data?.[0];
+      let resultBuffer: Buffer | undefined;
+
+      if (data?.b64_json) {
+        resultBuffer = Buffer.from(data.b64_json, 'base64');
+      } else if (data?.url) {
+        try {
+          const imgResponse = await firstValueFrom(
+            this.httpService.get(data.url, {
+              responseType: 'arraybuffer',
+              timeout: 30000,
+            }),
+          );
+          resultBuffer = Buffer.from(imgResponse.data);
+        } catch (err) {
+          this.logger.error('Failed to download edited image', err?.message);
+        }
+      }
+
+      return {
+        imageBuffer: resultBuffer,
+        inputTokens: response.data?.usage?.input_tokens ?? 0,
+        outputTokens: response.data?.usage?.output_tokens ?? 0,
+        totalCost: model.estimatedTokens,
+        responseTime: Date.now() - start,
+      };
+    } catch (err) {
+      throw this.handleError(err);
+    }
+  }
+
   async generateImageGemini(modelId: string, prompt: string, imageBase64?: string): Promise<AiResponse> {
     const model = getModel(modelId);
     if (!model) throw new Error(`Unknown model: ${modelId}`);

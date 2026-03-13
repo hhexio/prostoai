@@ -68,7 +68,7 @@ export class BotUpdate {
         ...mainMenuKeyboard(),
       });
     } else {
-      await ctx.reply(MESSAGES.WELCOME_BACK(user.balance), {
+      await ctx.reply(MESSAGES.MAIN_MENU(user.balance), {
         parse_mode: 'HTML',
         ...mainMenuKeyboard(),
       });

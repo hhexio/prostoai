@@ -179,6 +179,10 @@ export class BotService {
         const imageBase64 = photoBuffer.toString('base64');
         const caption = (ctx.message as any)?.caption || 'Edit this image';
         aiResponse = await this.ai.generateImageGemini(modelId, caption, imageBase64);
+      } else if (type === 'photo' && isImageModel) {
+        const photoBuffer = await this.downloadPhoto(ctx);
+        const caption = (ctx.message as any)?.caption || 'Edit this image';
+        aiResponse = await this.ai.generateImageWithReference(modelId, caption, photoBuffer);
       } else if (type === 'photo') {
         const photoBuffer = await this.downloadPhoto(ctx);
         const base64 = photoBuffer.toString('base64');

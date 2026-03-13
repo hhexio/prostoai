@@ -125,9 +125,9 @@ export class BotUpdate {
 
     if (user.selectedModel) {
       await this.users.setSelectedModel(user.id, null);
-      await ctx.reply(MESSAGES.AUTO_MODE, { parse_mode: 'HTML' });
+      await ctx.reply(MESSAGES.AUTO_MODE, { parse_mode: 'HTML', ...backToMenuKeyboard() });
     } else {
-      await ctx.reply('🤖 Выберите модель через /menu или отправьте сообщение в авто-режиме.');
+      await ctx.reply('🤖 Выберите модель через /menu или отправьте сообщение в авто-режиме.', backToMenuKeyboard());
     }
   }
 
@@ -157,12 +157,12 @@ export class BotUpdate {
 
   @Command('privacy')
   async onPrivacy(@Ctx() ctx: Context) {
-    await ctx.reply(MESSAGES.PRIVACY_POLICY, { parse_mode: 'HTML' });
+    await ctx.reply(MESSAGES.PRIVACY_POLICY, { parse_mode: 'HTML', ...backToMenuKeyboard() });
   }
 
   @Command('terms')
   async onTerms(@Ctx() ctx: Context) {
-    await ctx.reply(MESSAGES.TERMS_OF_SERVICE, { parse_mode: 'HTML' });
+    await ctx.reply(MESSAGES.TERMS_OF_SERVICE, { parse_mode: 'HTML', ...backToMenuKeyboard() });
   }
 
   @Command('promo')
@@ -171,7 +171,7 @@ export class BotUpdate {
     const code = text.split(' ')[1]?.trim().toUpperCase();
 
     if (!code) {
-      await ctx.reply('Введите промокод: /promo ВАШKОД');
+      await ctx.reply('Введите промокод: /promo ВАШKОД', backToMenuKeyboard());
       return;
     }
 
@@ -180,9 +180,9 @@ export class BotUpdate {
 
     const result = await this.users.applyPromoCode(user.id, code);
     if (result.success) {
-      await ctx.reply(MESSAGES.PROMO_SUCCESS(result.tokens), { parse_mode: 'HTML' });
+      await ctx.reply(MESSAGES.PROMO_SUCCESS(result.tokens), { parse_mode: 'HTML', ...backToMenuKeyboard() });
     } else {
-      await ctx.reply(MESSAGES.PROMO_INVALID, { parse_mode: 'HTML' });
+      await ctx.reply(MESSAGES.PROMO_INVALID, { parse_mode: 'HTML', ...backToMenuKeyboard() });
     }
   }
 
@@ -331,7 +331,7 @@ export class BotUpdate {
         ...Markup.inlineKeyboard([[Markup.button.url('Оплатить через ЮKassa', paymentUrl)]]),
       });
     } catch {
-      await ctx.reply('❌ Не удалось создать платёж. Попробуйте позже.');
+      await ctx.reply('❌ Не удалось создать платёж. Попробуйте позже.', backToMenuKeyboard());
     }
   }
 

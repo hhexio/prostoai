@@ -8,7 +8,7 @@ import { RouterService } from '../ai/router.service';
 import { UsersService } from '../users/users.service';
 import { getModel } from '../ai/models.config';
 import { MESSAGES } from './messages';
-import { buyKeyboard } from './keyboards';
+import { buyKeyboard, backToMenuKeyboard } from './keyboards';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -135,7 +135,7 @@ export class BotService {
       if (err.message === 'TIMEOUT') errorMsg = MESSAGES.ERROR_TIMEOUT;
       else if (err.message === 'RATE_LIMIT') errorMsg = MESSAGES.ERROR_RATE_LIMIT;
       else if (err.message === 'SERVICE_UNAVAILABLE') errorMsg = MESSAGES.ERROR_SERVICE;
-      await ctx.reply(errorMsg, { parse_mode: 'HTML' });
+      await ctx.reply(errorMsg, { parse_mode: 'HTML', ...backToMenuKeyboard() });
       try { await ctx.telegram.deleteMessage(ctx.chat!.id, statusMsg.message_id); } catch {}
       this.logger.error('AI call failed', err);
       return;
@@ -184,7 +184,7 @@ export class BotService {
         if (aiResponse.imageBuffer) {
           await ctx.replyWithDocument({ source: aiResponse.imageBuffer, filename: 'image.png' });
         } else {
-          await ctx.reply('Изображение сгенерировано, но слишком большое для отправки. Попробуйте более простой запрос.');
+          await ctx.reply('Изображение сгенерировано, но слишком большое для отправки. Попробуйте более простой запрос.', backToMenuKeyboard());
         }
       } else {
         // Refund tokens if deducted
@@ -194,7 +194,7 @@ export class BotService {
         await ctx.reply(
           '😔 Что-то пошло не так. Попробуйте немного позже.\n\n' +
           (tokensDeducted ? '✅ Токены возвращены на ваш баланс.' : ''),
-          { parse_mode: 'HTML' },
+          { parse_mode: 'HTML', ...backToMenuKeyboard() },
         );
         this.logger.error('Failed to send response', err);
       }

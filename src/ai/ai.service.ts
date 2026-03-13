@@ -83,10 +83,30 @@ export class AiService {
         ),
       );
 
-      const imageUrl = response.data?.data?.[0]?.url ?? response.data?.data?.[0]?.b64_json;
+      const imageUrl = response.data?.data?.[0]?.url;
+      const b64 = response.data?.data?.[0]?.b64_json;
+
+      // Download image to buffer (Telegram can't fetch ProxyAPI URLs directly)
+      let imageBuffer: Buffer | undefined;
+      if (b64) {
+        imageBuffer = Buffer.from(b64, 'base64');
+      } else if (imageUrl) {
+        try {
+          const imgResponse = await firstValueFrom(
+            this.httpService.get(imageUrl, {
+              responseType: 'arraybuffer',
+              timeout: 30000,
+            }),
+          );
+          imageBuffer = Buffer.from(imgResponse.data);
+        } catch (err) {
+          this.logger.error('Failed to download generated image', err?.message);
+        }
+      }
 
       return {
-        imageUrl,
+        imageBuffer,
+        imageUrl: imageBuffer ? undefined : imageUrl,
         inputTokens: 0,
         outputTokens: 0,
         totalCost: model.estimatedTokens,

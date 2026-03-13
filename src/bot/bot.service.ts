@@ -38,15 +38,19 @@ export class BotService {
     const modelId = user.selectedModel ?? this.router.route(type, messageText);
     const model = getModel(modelId);
     const isImageModel = model?.category === 'image';
-    const limitType = isImageModel ? 'image' : 'text';
 
     // Estimate cost
     const estimatedCost = this.ai.estimateCost(modelId);
 
+    // Admin bypass — never charged
+    const isAdmin = ctx.from!.id.toString() === this.config.get('ADMIN_TELEGRAM_ID');
+
     // Fix: Check free limit FIRST, then balance
     let isFree = false;
-    if (model?.isFree) {
-      const freeCheck = await this.checkFreeLimit(user.id, limitType);
+    if (isAdmin) {
+      isFree = true; // Admin always free
+    } else if (model?.isFree) {
+      const freeCheck = await this.checkFreeLimit(user.id);
       if (freeCheck.allowed) {
         isFree = true;
       } else {
@@ -133,13 +137,24 @@ export class BotService {
       else if (err.message === 'SERVICE_UNAVAILABLE') errorMsg = MESSAGES.ERROR_SERVICE;
       await ctx.reply(errorMsg, { parse_mode: 'HTML' });
       try { await ctx.telegram.deleteMessage(ctx.chat!.id, statusMsg.message_id); } catch {}
+      this.logger.error('AI call failed', err);
       return;
     }
 
-    // Deduct tokens (if not free)
+    // Deduct tokens (if not free and not admin)
     const actualCost = aiResponse.totalCost;
-    if (!isFree) {
-      await this.deductTokens(user.id, actualCost);
+    let tokensDeducted = false;
+    if (!isFree && !isAdmin) {
+      const deducted = await this.deductTokens(user.id, actualCost);
+      if (!deducted) {
+        await ctx.reply(MESSAGES.NO_BALANCE, {
+          parse_mode: 'HTML',
+          ...buyKeyboard(),
+        });
+        try { await ctx.telegram.deleteMessage(ctx.chat!.id, statusMsg.message_id); } catch {}
+        return;
+      }
+      tokensDeducted = true;
     }
 
     // Save usage
@@ -166,38 +181,41 @@ export class BotService {
       }
     } catch (err) {
       if (err.message?.includes('413') || err.message?.includes('Too Large')) {
-        // Try sending as document instead
         if (aiResponse.imageBuffer) {
           await ctx.replyWithDocument({ source: aiResponse.imageBuffer, filename: 'image.png' });
         } else {
-          await ctx.reply('Image was generated but is too large to send. Try a simpler prompt.');
+          await ctx.reply('Изображение сгенерировано, но слишком большое для отправки. Попробуйте более простой запрос.');
         }
       } else {
-        throw err;
+        // Refund tokens if deducted
+        if (tokensDeducted) {
+          await this.refundTokens(user.id, actualCost);
+        }
+        await ctx.reply(
+          '😔 Что-то пошло не так. Попробуйте немного позже.\n\n' +
+          (tokensDeducted ? '✅ Токены возвращены на ваш баланс.' : ''),
+          { parse_mode: 'HTML' },
+        );
+        this.logger.error('Failed to send response', err);
       }
     }
 
     // Delete status message
     try { await ctx.telegram.deleteMessage(ctx.chat!.id, statusMsg.message_id); } catch {}
 
-    // Free hint
-    if (isFree) {
-      const remaining = await this.getFreeRemaining(user.id, limitType);
+    // Free hint (only for non-admin free requests)
+    if (isFree && !isAdmin) {
+      const remaining = await this.getFreeRemaining(user.id);
       if (remaining <= 3) {
-        await ctx.reply(MESSAGES.FREE_HINT(remaining, limitType), { parse_mode: 'HTML' });
+        await ctx.reply(MESSAGES.FREE_HINT(remaining), { parse_mode: 'HTML' });
       }
     }
   }
 
-  async checkFreeLimit(
-    userId: number,
-    type: 'text' | 'image',
-  ): Promise<{ allowed: boolean; remaining: number }> {
+  async checkFreeLimit(userId: number): Promise<{ allowed: boolean; remaining: number }> {
     const today = new Date().toISOString().split('T')[0];
-    const key = type === 'text' ? `free:${userId}:${today}` : `freeimg:${userId}:${today}`;
-    const limit = type === 'text'
-      ? Number(this.config.get('FREE_TEXT_LIMIT', 10))
-      : Number(this.config.get('FREE_IMAGE_LIMIT', 2));
+    const key = `free:${userId}:${today}`;
+    const limit = Number(this.config.get('FREE_TEXT_LIMIT', 10));
 
     const current = await this.redis.incr(key);
     if (current === 1) {
@@ -213,14 +231,38 @@ export class BotService {
     return { allowed: true, remaining: limit - current };
   }
 
-  async getFreeRemaining(userId: number, type: 'text' | 'image'): Promise<number> {
+  async getFreeRemaining(userId: number): Promise<number> {
     const today = new Date().toISOString().split('T')[0];
-    const key = type === 'text' ? `free:${userId}:${today}` : `freeimg:${userId}:${today}`;
-    const limit = type === 'text'
-      ? Number(this.config.get('FREE_TEXT_LIMIT', 10))
-      : Number(this.config.get('FREE_IMAGE_LIMIT', 2));
+    const key = `free:${userId}:${today}`;
+    const limit = Number(this.config.get('FREE_TEXT_LIMIT', 10));
     const used = Number(await this.redis.get(key) ?? 0);
     return Math.max(0, limit - used);
+  }
+
+  async refundTokens(userId: number, amount: number): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { balance: { increment: amount } },
+    });
+
+    const lastPackage = await this.prisma.tokenPackage.findFirst({
+      where: {
+        userId,
+        tokensUsed: { gt: 0 },
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: new Date() } },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (lastPackage) {
+      await this.prisma.tokenPackage.update({
+        where: { id: lastPackage.id },
+        data: { tokensUsed: { decrement: Math.min(amount, lastPackage.tokensUsed) } },
+      });
+    }
   }
 
   async deductTokens(userId: number, cost: number): Promise<boolean> {

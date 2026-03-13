@@ -11,10 +11,6 @@ export function mainMenuKeyboard() {
       Markup.button.callback('🎨 Создать фото', 'menu_image'),
     ],
     [
-      Markup.button.callback('📸 Работа с фото', 'menu_vision'),
-      Markup.button.callback('🎤 Работа с аудио', 'menu_audio'),
-    ],
-    [
       Markup.button.callback('👤 Мой профиль', 'profile'),
       Markup.button.callback('💎 Купить токены', 'buy_tokens'),
     ],
@@ -31,7 +27,7 @@ export function chatModelsKeyboard() {
       Markup.button.callback('🌟 GPT-4o', 'model_gpt-4o'),
       Markup.button.callback('🔥 GPT-5.1', 'model_gpt-5.1'),
     ],
-    [Markup.button.callback('« Назад', 'back_menu')],
+    [Markup.button.callback('◀️ В главное меню', 'back_menu')],
   ]);
 }
 
@@ -47,7 +43,7 @@ export function imageModelsKeyboard() {
     ],
     [
       Markup.button.callback('🌈 DALL-E 3', 'model_dall-e-3'),
-      Markup.button.callback('« Назад', 'back_menu'),
+      Markup.button.callback('◀️ В главное меню', 'back_menu'),
     ],
   ]);
 }
@@ -101,15 +97,28 @@ export function buyKeyboard() {
       Markup.button.callback('🚀 Pro 1.5M — 690₽', 'buy_pro'),
     ],
     [Markup.button.callback('👑 Ultra 5M — 1990₽', 'buy_ultra')],
-    [Markup.button.callback('« Назад', 'back_menu')],
+    [Markup.button.callback('◀️ В главное меню', 'back_menu')],
   ]);
 }
 
+// Stars available only for packages ≤299₽
+const STARS_MAX_PRICE = 299;
+
 export function buyMethodKeyboard(packageId: string) {
+  const pkg = TOKEN_PACKAGES.find((p) => p.id === packageId);
+  const starsAvailable = pkg && pkg.priceRub <= STARS_MAX_PRICE;
+
+  if (starsAvailable) {
+    return Markup.inlineKeyboard([
+      [Markup.button.callback('⭐ Оплата Telegram Stars', `pay_stars_${packageId}`)],
+      [Markup.button.callback('💳 Оплата картой', `pay_card_${packageId}`)],
+      [Markup.button.callback('◀️ В главное меню', 'back_menu')],
+    ]);
+  }
+
   return Markup.inlineKeyboard([
-    [Markup.button.callback('💳 ЮKassa (карта/СБП)', `pay_yukassa_${packageId}`)],
-    [Markup.button.callback('⭐ Telegram Stars', `pay_stars_${packageId}`)],
-    [Markup.button.callback('« Назад', 'back_menu')],
+    [Markup.button.callback('💳 Оплата картой — скоро!', `pay_card_${packageId}`)],
+    [Markup.button.callback('◀️ В главное меню', 'back_menu')],
   ]);
 }
 
@@ -121,11 +130,11 @@ export function profileKeyboard() {
     ],
     [
       Markup.button.callback('📊 Статистика', 'user_stats'),
-      Markup.button.callback('« В главное меню', 'back_menu'),
+      Markup.button.callback('◀️ В главное меню', 'back_menu'),
     ],
   ]);
 }
 
 export function backToMenuKeyboard() {
-  return Markup.inlineKeyboard([[Markup.button.callback('« Назад', 'back_menu')]]);
+  return Markup.inlineKeyboard([[Markup.button.callback('◀️ В главное меню', 'back_menu')]]);
 }

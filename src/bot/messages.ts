@@ -9,9 +9,7 @@ export const MESSAGES = {
 📸 Анализировать и редактировать фото
 🎤 Распознавать голосовые сообщения
 
-🎁 <b>Бесплатно каждый день:</b>
-• 10 текстовых запросов
-• 2 генерации картинок
+🎁 <b>Бесплатно каждый день:</b> 10 текстовых запросов
 
 Просто напиши что угодно — и я отвечу! ✨`,
 
@@ -91,14 +89,12 @@ export const MESSAGES = {
 
 💡 Просто запишите голосовое сообщение.`,
 
-  BALANCE: (tokens: number, textLeft: number, imgLeft: number, expiring: number, permanent: number) => `👤 <b>Ваш профиль</b>
+  BALANCE: (tokens: number, textLeft: number) => `👤 <b>Ваш профиль</b>
 
 💰 Баланс: <b>${tokens.toLocaleString('ru-RU')}</b> токенов
 📊 Хватит примерно на <b>${Math.floor(tokens / 1500)}</b> запросов
 
-🎁 <b>Бесплатно сегодня:</b>
-• 💬 Текст: ${textLeft}/10
-• 🎨 Картинки: ${imgLeft}/2`,
+🎁 <b>Бесплатно сегодня:</b> 💬 Текст: ${textLeft}/10`,
 
   BUY_PROMPT: `🛒 <b>Выберите пакет токенов:</b>
 
@@ -124,8 +120,8 @@ export const MESSAGES = {
   ERROR_RATE_LIMIT: '⚡ Слишком много запросов. Подождите немного.',
   ERROR_SERVICE: '🔧 AI-сервис временно недоступен. Попробуйте позже.',
 
-  FREE_HINT: (remaining: number, type: 'text' | 'image') =>
-    `💡 Осталось <b>${remaining}</b> бесплатных ${type === 'text' ? 'запросов' : 'запросов на картинки'} на сегодня.`,
+  FREE_HINT: (remaining: number) =>
+    `💡 Осталось <b>${remaining}</b> бесплатных запросов на сегодня.`,
 
   MODEL_SELECTED: (displayName: string) =>
     `✅ Модель переключена на <b>${displayName}</b>.\n\nОтправьте любое сообщение!`,

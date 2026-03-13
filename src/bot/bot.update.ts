@@ -20,11 +20,10 @@ import {
   mainMenuKeyboard,
   chatModelsKeyboard,
   imageModelsKeyboard,
-  visionModelsKeyboard,
-  audioModelsKeyboard,
   buyKeyboard,
   buyMethodKeyboard,
   profileKeyboard,
+  backToMenuKeyboard,
 } from './keyboards';
 import { getModel } from '../ai/models.config';
 import { ConfigService } from '@nestjs/config';
@@ -71,25 +70,17 @@ export class BotUpdate {
 
   @Help()
   async onHelp(@Ctx() ctx: Context) {
-    await ctx.reply(MESSAGES.HELP, { parse_mode: 'HTML' });
+    await ctx.reply(MESSAGES.HELP, { parse_mode: 'HTML', ...backToMenuKeyboard() });
   }
 
   @Command('balance')
   async onBalance(@Ctx() ctx: Context) {
     const telegramId = BigInt(ctx.from!.id);
     const user = await this.users.findOrCreate(telegramId);
-    const balanceInfo = await this.users.getBalance(user.id);
-    const textLeft = await this.botService.getFreeRemaining(user.id, 'text');
-    const imgLeft = await this.botService.getFreeRemaining(user.id, 'image');
+    const textLeft = await this.botService.getFreeRemaining(user.id);
 
     await ctx.reply(
-      MESSAGES.BALANCE(
-        user.balance,
-        textLeft,
-        imgLeft,
-        balanceInfo.expiring,
-        balanceInfo.permanent,
-      ),
+      MESSAGES.BALANCE(user.balance, textLeft),
       {
         parse_mode: 'HTML',
         ...profileKeyboard(),
@@ -123,6 +114,7 @@ export class BotUpdate {
 
     await ctx.reply(MESSAGES.REFERRAL(link, stats.count, stats.earned), {
       parse_mode: 'HTML',
+      ...backToMenuKeyboard(),
     });
   }
 
@@ -147,7 +139,7 @@ export class BotUpdate {
 
     if (isAdmin) {
       const data = await this.analytics.getAdminStats();
-      await ctx.reply(MESSAGES.STATS_ADMIN(data), { parse_mode: 'HTML' });
+      await ctx.reply(MESSAGES.STATS_ADMIN(data), { parse_mode: 'HTML', ...backToMenuKeyboard() });
     } else {
       const data = await this.analytics.getUserStats(user.id);
       await ctx.reply(
@@ -158,7 +150,7 @@ export class BotUpdate {
           data.daysActive,
           data.referrals,
         ),
-        { parse_mode: 'HTML' },
+        { parse_mode: 'HTML', ...backToMenuKeyboard() },
       );
     }
   }
@@ -213,14 +205,6 @@ export class BotUpdate {
         keyboard = imageModelsKeyboard();
         infoText = MESSAGES.IMAGE_CATEGORY_INFO;
         break;
-      case 'vision':
-        keyboard = visionModelsKeyboard();
-        infoText = MESSAGES.PHOTO_CATEGORY_INFO;
-        break;
-      case 'audio':
-        keyboard = audioModelsKeyboard();
-        infoText = MESSAGES.AUDIO_CATEGORY_INFO;
-        break;
       default:
         return;
     }
@@ -246,10 +230,12 @@ export class BotUpdate {
     if (modelId === 'nano-banana-2') {
       await ctx.editMessageText(MESSAGES.NANO_BANANA_SELECTED, {
         parse_mode: 'HTML',
+        ...backToMenuKeyboard(),
       });
     } else {
       await ctx.editMessageText(MESSAGES.MODEL_SELECTED(model.displayName), {
         parse_mode: 'HTML',
+        ...backToMenuKeyboard(),
       });
     }
   }
@@ -258,18 +244,10 @@ export class BotUpdate {
   async onProfile(@Ctx() ctx: Context) {
     const telegramId = BigInt(ctx.from!.id);
     const user = await this.users.findOrCreate(telegramId);
-    const balanceInfo = await this.users.getBalance(user.id);
-    const textLeft = await this.botService.getFreeRemaining(user.id, 'text');
-    const imgLeft = await this.botService.getFreeRemaining(user.id, 'image');
+    const textLeft = await this.botService.getFreeRemaining(user.id);
 
     await ctx.editMessageText(
-      MESSAGES.BALANCE(
-        user.balance,
-        textLeft,
-        imgLeft,
-        balanceInfo.expiring,
-        balanceInfo.permanent,
-      ),
+      MESSAGES.BALANCE(user.balance, textLeft),
       {
         parse_mode: 'HTML',
         ...profileKeyboard(),
@@ -295,6 +273,7 @@ export class BotUpdate {
 
     await ctx.editMessageText(MESSAGES.REFERRAL(link, stats.count, stats.earned), {
       parse_mode: 'HTML',
+      ...backToMenuKeyboard(),
     });
   }
 
@@ -312,7 +291,7 @@ export class BotUpdate {
         data.daysActive,
         data.referrals,
       ),
-      { parse_mode: 'HTML' },
+      { parse_mode: 'HTML', ...backToMenuKeyboard() },
     );
   }
 
@@ -326,6 +305,14 @@ export class BotUpdate {
       parse_mode: 'HTML',
       ...buyMethodKeyboard(packageId),
     });
+  }
+
+  @Action(/^pay_card_(.+)$/)
+  async onPayCard(@Ctx() ctx: Context) {
+    await ctx.editMessageText(
+      '💳 Оплата картой скоро будет доступна!\n\nПока можно приобрести пакеты до 299₽ за Telegram Stars ⭐\nВыберите другой пакет через /buy',
+      { parse_mode: 'HTML', ...backToMenuKeyboard() },
+    );
   }
 
   @Action(/^pay_yukassa_(.+)$/)

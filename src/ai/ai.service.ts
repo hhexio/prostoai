@@ -48,7 +48,7 @@ export class AiService {
         this.httpService.post(
           `${this.baseUrl}/chat/completions`,
           { model: model.apiModel, messages, max_completion_tokens: model.maxTokens },
-          { headers: this.headers, timeout: 30000 },
+          { headers: this.headers, timeout: 120000 },
         ),
       );
 
@@ -79,7 +79,7 @@ export class AiService {
         this.httpService.post(
           `${this.baseUrl}/images/generations`,
           { model: model.apiModel, prompt, n: 1, size: '1024x1024' },
-          { headers: this.headers, timeout: 60000 },
+          { headers: this.headers, timeout: 120000 },
         ),
       );
 
@@ -127,7 +127,7 @@ export class AiService {
     parts: any[],
     apiModel: string,
     estimatedTokens: number,
-    timeout = 60000,
+    timeout = 120000,
   ): Promise<AiResponse> {
     const startTime = Date.now();
 
@@ -217,7 +217,7 @@ export class AiService {
             ],
             max_completion_tokens: model.maxTokens,
           },
-          { headers: this.headers, timeout: 30000 },
+          { headers: this.headers, timeout: 120000 },
         ),
       );
 
@@ -250,7 +250,7 @@ export class AiService {
       const response = await firstValueFrom(
         this.httpService.post(`${this.baseUrl}/audio/transcriptions`, form, {
           headers: { ...this.headers, ...form.getHeaders() },
-          timeout: 60000,
+          timeout: 120000,
         }),
       );
 

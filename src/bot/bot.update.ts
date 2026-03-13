@@ -335,7 +335,10 @@ export class BotUpdate {
       const { Markup } = await import('telegraf');
       const { paymentUrl } = await this.billing.createYukassaPayment(user.id, packageId);
       await ctx.reply('💳 Перейдите по ссылке для оплаты:', {
-        ...Markup.inlineKeyboard([[Markup.button.url('Оплатить через ЮKassa', paymentUrl)]]),
+        ...Markup.inlineKeyboard([
+          [Markup.button.url('Оплатить через ЮKassa', paymentUrl)],
+          [Markup.button.callback('◀️ В главное меню', 'back_menu')],
+        ]),
       });
     } catch {
       await ctx.reply('❌ Не удалось создать платёж. Попробуйте позже.', backToMenuKeyboard());

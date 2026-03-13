@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Context } from 'telegraf';
-import { TOKEN_PACKAGES } from '../bot/keyboards';
+import { TOKEN_PACKAGES, backToMenuKeyboard } from '../bot/keyboards';
 import { BillingService } from './billing.service';
 
 @Injectable()
@@ -12,7 +12,7 @@ export class StarsService {
   async createInvoice(ctx: Context, packageId: string, userId: number): Promise<void> {
     const pkg = TOKEN_PACKAGES.find((p) => p.id === packageId);
     if (!pkg) {
-      await ctx.reply('❌ Пакет не найден');
+      await ctx.reply('❌ Пакет не найден', backToMenuKeyboard());
       return;
     }
 
@@ -29,7 +29,7 @@ export class StarsService {
       });
     } catch (err) {
       this.logger.error('Stars invoice error', err);
-      await ctx.reply('❌ Не удалось выставить счёт. Попробуйте позже.');
+      await ctx.reply('❌ Не удалось выставить счёт. Попробуйте позже.', backToMenuKeyboard());
     }
   }
 
@@ -46,7 +46,10 @@ export class StarsService {
       const tokens = pkg?.tokens ?? 0;
 
       const { MESSAGES } = await import('../bot/messages');
-      await ctx.reply(MESSAGES.PAYMENT_SUCCESS(tokens, packageName), { parse_mode: 'HTML' });
+      await ctx.reply(MESSAGES.PAYMENT_SUCCESS(tokens, packageName), {
+        parse_mode: 'HTML',
+        ...backToMenuKeyboard(),
+      });
     } catch (err) {
       this.logger.error('Stars payment confirmation error', err);
     }

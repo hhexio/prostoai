@@ -178,6 +178,9 @@ export class BotService {
         await ctx.replyWithPhoto({ url: aiResponse.imageUrl });
       } else if (aiResponse.text) {
         await ctx.reply(aiResponse.text, { parse_mode: 'HTML' });
+      } else {
+        this.logger.warn(`Empty AI response for model ${modelId}: ${JSON.stringify({ hasBuffer: !!aiResponse.imageBuffer, hasUrl: !!aiResponse.imageUrl, hasText: !!aiResponse.text })}`);
+        await ctx.reply('😔 AI вернул пустой ответ. Попробуйте переформулировать запрос.', backToMenuKeyboard());
       }
     } catch (err) {
       if (err.message?.includes('413') || err.message?.includes('Too Large')) {

@@ -141,15 +141,32 @@ export class AiService {
       let imageBuffer: Buffer | null = null;
       let textResponse: string | null = null;
 
+      this.logger.debug('Gemini raw response keys: ' + JSON.stringify(Object.keys(data)));
+
       if (data.candidates && data.candidates[0]?.content?.parts) {
         for (const part of data.candidates[0].content.parts) {
-          if (part.inline_data) {
+          if (part.inlineData) {
+            // Gemini API uses camelCase: inlineData, not inline_data
+            imageBuffer = Buffer.from(part.inlineData.data, 'base64');
+          } else if (part.inline_data) {
+            // Also handle snake_case variant
             imageBuffer = Buffer.from(part.inline_data.data, 'base64');
           }
           if (part.text) {
             textResponse = part.text;
           }
         }
+        this.logger.debug(`Gemini parsed: hasImage=${!!imageBuffer}, hasText=${!!textResponse}, parts=${data.candidates[0].content.parts.length}`);
+      } else {
+        // Log unexpected response structure
+        this.logger.warn('Gemini: no candidates/parts in response. ' +
+          `candidates=${!!data.candidates}, ` +
+          `blockReason=${data.promptFeedback?.blockReason ?? 'none'}, ` +
+          `raw=${JSON.stringify(data).slice(0, 500)}`);
+      }
+
+      if (!imageBuffer && !textResponse) {
+        throw new Error('Gemini returned empty response — no image and no text');
       }
 
       return {

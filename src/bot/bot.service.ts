@@ -10,6 +10,14 @@ import { ReferralService } from '../users/referral.service';
 import { getModel } from '../ai/models.config';
 import { MESSAGES } from './messages';
 import { buyKeyboard, backToMenuKeyboard } from './keyboards';
+
+const IMAGE_MODEL_EMOJI: Record<string, string> = {
+  'nano-banana-2': '🍌',
+  'gpt-image-1-mini': '🖼',
+  'gpt-image-1': '🎨',
+  'gpt-image-1.5': '✨',
+  'dall-e-3': '🌈',
+};
 import { ConfigService } from '@nestjs/config';
 
 interface MediaGroupEntry {
@@ -273,9 +281,28 @@ export class BotService {
     // Delete status message
     try { await ctx.telegram.deleteMessage(ctx.chat!.id, statusMsg.message_id); } catch {}
 
-    // Always show back_menu after successful AI response
+    // Post-response UX: show cost + action buttons
     if (responseSent) {
-      await ctx.reply('👆 Готово!', backToMenuKeyboard());
+      const updatedUser = await this.prisma.user.findUnique({ where: { id: user.id }, select: { balance: true } });
+      const remainingBalance = updatedUser?.balance ?? 0;
+
+      if (isImageModel) {
+        const emoji = IMAGE_MODEL_EMOJI[modelId] || '🎨';
+        await ctx.reply(
+          `${emoji} Сгенерировано в ${model!.displayName}\n💰 Стоимость: ${actualCost.toLocaleString('ru-RU')} токенов. Осталось: ${remainingBalance.toLocaleString('ru-RU')} токенов.`,
+          Markup.inlineKeyboard([
+            [Markup.button.callback('🎨 Создать ещё', `new_image_${modelId}`)],
+            [Markup.button.callback('◀️ В главное меню', 'back_menu')],
+          ]),
+        );
+      } else {
+        await ctx.reply(
+          `💰 −${actualCost.toLocaleString('ru-RU')} токенов. Осталось: ${remainingBalance.toLocaleString('ru-RU')}`,
+          Markup.inlineKeyboard([
+            [Markup.button.callback('◀️ В главное меню', 'back_menu')],
+          ]),
+        );
+      }
     }
 
     // Check if this is user's first request — apply deferred referral bonus
@@ -406,7 +433,18 @@ export class BotService {
         await ctx.reply('⚠️ Обработаны первые 5 фото. Максимум 5 фото в одном запросе.');
       }
 
-      await ctx.reply('👆 Готово!', backToMenuKeyboard());
+      // Post-response UX: show cost + action buttons
+      const updatedUser = await this.prisma.user.findUnique({ where: { id: userId }, select: { balance: true } });
+      const remainingBalance = updatedUser?.balance ?? 0;
+      const emoji = IMAGE_MODEL_EMOJI[modelId] || '🎨';
+      const model = getModel(modelId);
+      await ctx.reply(
+        `${emoji} Сгенерировано в ${model?.displayName ?? modelId}\n💰 Стоимость: ${actualCost.toLocaleString('ru-RU')} токенов. Осталось: ${remainingBalance.toLocaleString('ru-RU')} токенов.`,
+        Markup.inlineKeyboard([
+          [Markup.button.callback('🎨 Создать ещё', `new_image_${modelId}`)],
+          [Markup.button.callback('◀️ В главное меню', 'back_menu')],
+        ]),
+      );
 
       // Check first request for referral bonus
       const usageCount = await this.prisma.usage.count({ where: { userId } });

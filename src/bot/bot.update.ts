@@ -7,7 +7,7 @@ import {
   Action,
   Ctx,
 } from 'nestjs-telegraf';
-import { Context } from 'telegraf';
+import { Context, Markup } from 'telegraf';
 import { Logger } from '@nestjs/common';
 import { BotService } from './bot.service';
 import { UsersService } from '../users/users.service';
@@ -354,6 +354,28 @@ export class BotUpdate {
 
     await ctx.answerCbQuery();
     await this.stars.createInvoice(ctx, packageId, user.id);
+  }
+
+  @Action(/^new_image_(.+)$/)
+  async onNewImage(@Ctx() ctx: Context) {
+    const match = (ctx as any).match;
+    const modelId = match?.[1];
+    const model = getModel(modelId);
+    if (!model) return;
+
+    const telegramId = BigInt(ctx.from!.id);
+    const user = await this.users.findOrCreate(telegramId);
+    await this.users.setSelectedModel(user.id, modelId);
+
+    await ctx.editMessageText(
+      `${model.displayName} готов!\n\n💡 Отправьте описание для генерации.`,
+      {
+        parse_mode: 'HTML',
+        ...Markup.inlineKeyboard([
+          [Markup.button.callback('◀️ В главное меню', 'back_menu')],
+        ]),
+      },
+    );
   }
 
   @Action('back_menu')

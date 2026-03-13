@@ -37,8 +37,20 @@ export class StarsService {
     const payment = (ctx.message as any)?.successful_payment;
     if (!payment) return;
 
+    let payload: { packageId: string; userId: number };
     try {
-      const payload = JSON.parse(payment.invoice_payload) as { packageId: string; userId: number };
+      payload = JSON.parse(payment.invoice_payload);
+    } catch {
+      this.logger.error('Invalid Stars invoice payload', payment.invoice_payload?.slice?.(0, 100));
+      return;
+    }
+
+    if (!payload?.packageId || !payload?.userId) {
+      this.logger.error('Missing fields in Stars invoice payload');
+      return;
+    }
+
+    try {
       await this.billingService.confirmStarsPayment(payload);
 
       const pkg = TOKEN_PACKAGES.find((p) => p.id === payload.packageId);
@@ -51,7 +63,7 @@ export class StarsService {
         ...backToMenuKeyboard(),
       });
     } catch (err) {
-      this.logger.error('Stars payment confirmation error', err);
+      this.logger.error('Stars payment confirmation error', (err as Error)?.message);
     }
   }
 }

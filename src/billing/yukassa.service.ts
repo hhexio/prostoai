@@ -66,7 +66,7 @@ export class YukassaService {
       );
       return response.data;
     } catch (err) {
-      this.logger.error('YooKassa createPayment error', err?.response?.data);
+      this.logger.error('YooKassa createPayment error', { status: err?.response?.status, message: err?.message });
       throw new Error('YUKASSA_ERROR');
     }
   }
@@ -80,7 +80,7 @@ export class YukassaService {
       );
       return response.data;
     } catch (err) {
-      this.logger.error('YooKassa getPayment error', err?.response?.data);
+      this.logger.error('YooKassa getPayment error', { status: err?.response?.status, message: err?.message });
       throw new Error('YUKASSA_ERROR');
     }
   }

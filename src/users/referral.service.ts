@@ -57,45 +57,55 @@ export class ReferralService {
 
   /** Apply referral bonus after referred user's first successful AI request */
   async applyReferralBonus(userId: number): Promise<void> {
-    const referral = await this.prisma.referral.findUnique({
-      where: { referredId: userId },
-    });
-
-    if (!referral || referral.bonusApplied) return;
-
-    const bonusTokens = referral.bonusTokens;
-
-    await this.prisma.$transaction([
-      this.prisma.user.update({
-        where: { id: referral.referrerId },
-        data: { balance: { increment: bonusTokens } },
-      }),
-      this.prisma.user.update({
-        where: { id: userId },
-        data: { balance: { increment: bonusTokens } },
-      }),
-      this.prisma.tokenPackage.create({
-        data: { userId: referral.referrerId, tokens: bonusTokens, tokensUsed: 0, type: 'PERMANENT' },
-      }),
-      this.prisma.tokenPackage.create({
-        data: { userId, tokens: bonusTokens, tokensUsed: 0, type: 'PERMANENT' },
-      }),
-      this.prisma.referral.update({
-        where: { id: referral.id },
-        data: { bonusApplied: true },
-      }),
-    ]);
-
-    // Notify referrer
     try {
-      const referrer = await this.prisma.user.findUnique({ where: { id: referral.referrerId } });
-      if (referrer) {
-        await this.bot.telegram.sendMessage(
-          referrer.telegramId.toString(),
-          `🎉 Ваш друг воспользовался ботом! Вам начислено ${bonusTokens.toLocaleString('ru-RU')} токенов.`,
-        );
+      const bonusApplied = await this.prisma.$transaction(async (tx) => {
+        const referral = await tx.referral.findUnique({
+          where: { referredId: userId },
+        });
+
+        if (!referral || referral.bonusApplied) return false;
+
+        const bonusTokens = referral.bonusTokens;
+
+        await tx.user.update({
+          where: { id: referral.referrerId },
+          data: { balance: { increment: bonusTokens } },
+        });
+        await tx.user.update({
+          where: { id: userId },
+          data: { balance: { increment: bonusTokens } },
+        });
+        await tx.tokenPackage.create({
+          data: { userId: referral.referrerId, tokens: bonusTokens, tokensUsed: 0, type: 'PERMANENT' },
+        });
+        await tx.tokenPackage.create({
+          data: { userId, tokens: bonusTokens, tokensUsed: 0, type: 'PERMANENT' },
+        });
+        await tx.referral.update({
+          where: { id: referral.id },
+          data: { bonusApplied: true },
+        });
+
+        return { referrerId: referral.referrerId, bonusTokens };
+      });
+
+      if (!bonusApplied) return;
+
+      // Notify referrer outside transaction
+      try {
+        const referrer = await this.prisma.user.findUnique({ where: { id: bonusApplied.referrerId } });
+        if (referrer) {
+          await this.bot.telegram.sendMessage(
+            referrer.telegramId.toString(),
+            `🎉 Ваш друг воспользовался ботом! Вам начислено ${bonusApplied.bonusTokens.toLocaleString('ru-RU')} токенов.`,
+          );
+        }
+      } catch (err) {
+        this.logger.warn(`Failed to notify referrer ${bonusApplied.referrerId}: ${(err as Error)?.message}`);
       }
-    } catch {}
+    } catch (err) {
+      this.logger.error(`Referral bonus error for user ${userId}`, (err as Error)?.message);
+    }
   }
 
   async getReferralStats(userId: number): Promise<{ count: number; earned: number }> {

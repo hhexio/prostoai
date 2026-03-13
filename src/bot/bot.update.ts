@@ -176,8 +176,8 @@ export class BotUpdate {
     const text = (ctx.message as any)?.text ?? '';
     const code = text.split(' ')[1]?.trim().toUpperCase();
 
-    if (!code) {
-      await ctx.reply('Введите промокод: /promo ВАШKОД', backToMenuKeyboard());
+    if (!code || code.length > 50 || !/^[A-ZА-Я0-9_-]+$/.test(code)) {
+      await ctx.reply('Введите промокод: /promo ВАШКОД', backToMenuKeyboard());
       return;
     }
 

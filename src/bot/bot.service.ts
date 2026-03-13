@@ -10,6 +10,7 @@ import { ReferralService } from '../users/referral.service';
 import { getModel } from '../ai/models.config';
 import { MESSAGES } from './messages';
 import { buyKeyboard, backToMenuKeyboard } from './keyboards';
+import { ConfigService } from '@nestjs/config';
 
 const IMAGE_MODEL_EMOJI: Record<string, string> = {
   'nano-banana-2': '🍌',
@@ -18,7 +19,6 @@ const IMAGE_MODEL_EMOJI: Record<string, string> = {
   'gpt-image-1.5': '✨',
   'dall-e-3': '🌈',
 };
-import { ConfigService } from '@nestjs/config';
 
 interface MediaGroupEntry {
   photos: Buffer[];
@@ -42,7 +42,7 @@ export class BotService {
 
   private readonly BLOCKED_PATTERNS = [
     /child\s*(porn|sex|nude)/i,
-    /детск\w*\s*(порн|секс|голы)/i,
+    /детск[а-яёА-ЯЁ]*\s*(порн|секс|голы)/i,
     /как\s*(сделать|создать|изготовить)\s*(бомб|взрывч|оружи|наркотик)/i,
     /how\s*to\s*(make|build|create)\s*(bomb|weapon|drug|explosive)/i,
   ];

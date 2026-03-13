@@ -300,7 +300,7 @@ export class AiService {
     if (status === 429) return new Error('RATE_LIMIT');
     if (status >= 500) return new Error('SERVICE_UNAVAILABLE');
     if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) return new Error('TIMEOUT');
-    this.logger.error('ProxyAPI error', err?.response?.data ?? err.message);
+    this.logger.error('ProxyAPI error', { status: err?.response?.status, message: err?.message });
     return new Error('UNKNOWN_ERROR');
   }
 }

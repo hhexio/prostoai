@@ -15,7 +15,7 @@ import { ReferralService } from '../users/referral.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { BillingService } from '../billing/billing.service';
 import { StarsService } from '../billing/stars.service';
-import { MESSAGES } from './messages';
+import { MESSAGES, MODEL_DESCRIPTIONS } from './messages';
 import {
   mainMenuKeyboard,
   chatModelsKeyboard,
@@ -239,7 +239,9 @@ export class BotUpdate {
         ...backToMenuKeyboard(),
       });
     } else {
-      await ctx.editMessageText(MESSAGES.MODEL_SELECTED(model.displayName), {
+      const description = MODEL_DESCRIPTIONS[modelId];
+      const text = description || MESSAGES.MODEL_SELECTED(model.displayName);
+      await ctx.editMessageText(text, {
         parse_mode: 'HTML',
         ...backToMenuKeyboard(),
       });

@@ -207,20 +207,17 @@ export class BotService {
       return;
     }
 
-    // Deduct tokens (if not admin)
+    // Deduct ACTUAL cost after AI call (not estimated)
     const actualCost = aiResponse.totalCost;
     let tokensDeducted = false;
     if (!isAdmin) {
       const deducted = await this.deductTokens(user.id, actualCost);
       if (!deducted) {
-        await ctx.reply(MESSAGES.NO_BALANCE, {
-          parse_mode: 'HTML',
-          ...buyKeyboard(),
-        });
-        try { await ctx.telegram.deleteMessage(ctx.chat!.id, statusMsg.message_id); } catch {}
-        return;
+        // Balance drained by concurrent request — log but don't block response
+        this.logger.warn(`Failed to deduct ${actualCost} from user ${user.id}, balance insufficient after AI call`);
+      } else {
+        tokensDeducted = true;
       }
-      tokensDeducted = true;
     }
 
     // Save usage
@@ -360,17 +357,16 @@ export class BotService {
 
       const aiResponse = await this.ai.generateImageGeminiRaw(parts);
 
-      // Deduct tokens
+      // Deduct ACTUAL cost after AI call
       const actualCost = aiResponse.totalCost;
       let tokensDeducted = false;
       if (!isAdmin) {
         const deducted = await this.deductTokens(userId, actualCost);
         if (!deducted) {
-          await ctx.reply(MESSAGES.NO_BALANCE, { parse_mode: 'HTML', ...buyKeyboard() });
-          try { await ctx.telegram.deleteMessage(ctx.chat!.id, statusMsg.message_id); } catch {}
-          return;
+          this.logger.warn(`Failed to deduct ${actualCost} from user ${userId}, balance insufficient after AI call`);
+        } else {
+          tokensDeducted = true;
         }
-        tokensDeducted = true;
       }
 
       // Save usage

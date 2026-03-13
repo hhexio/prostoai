@@ -4,7 +4,7 @@ export function mainMenuKeyboard() {
   return Markup.inlineKeyboard([
     [
       Markup.button.callback('🔥 GPT-5.1', 'model_gpt-5.1'),
-      Markup.button.callback('🍌 Nano Banana', 'model_nano-banana-2'),
+      Markup.button.callback('🍌 Nano Banana 2', 'model_nano-banana-2'),
     ],
     [
       Markup.button.callback('💬 Чат-модели', 'menu_chat'),

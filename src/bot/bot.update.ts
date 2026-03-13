@@ -383,7 +383,7 @@ export class BotUpdate {
     const telegramId = BigInt(ctx.from!.id);
     const user = await this.users.findOrCreate(telegramId);
 
-    const text = MESSAGES.WELCOME_BACK(user.balance);
+    const text = MESSAGES.MAIN_MENU(user.balance);
 
     try {
       await ctx.editMessageText(text, {

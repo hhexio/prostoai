@@ -44,11 +44,13 @@
       <button class="tab-btn active" onclick="showTab('stats', event)">📊 Статистика</button>
       <button class="tab-btn" onclick="showTab('feedback', event)">📩 Обратная связь</button>
       <button class="tab-btn" onclick="showTab('users', event)">👥 Пользователи</button>
+      <button class="tab-btn" onclick="showTab('metrics', event)">📈 Конверсии</button>
     </div>
 
     <div id="tab-stats"></div>
     <div id="tab-feedback" style="display:none"></div>
     <div id="tab-users" style="display:none"></div>
+    <div id="tab-metrics" style="display:none"></div>
   </div>
 
   <script>
@@ -74,6 +76,7 @@
       document.getElementById('tab-' + name).style.display = 'block';
       if (name === 'feedback') loadFeedback();
       if (name === 'users') loadUsers();
+      if (name === 'metrics') loadMetrics();
     }
 
     function renderStats(data) {
@@ -117,6 +120,82 @@
             </div>
           `).join('');
           document.getElementById('tab-feedback').innerHTML = html;
+        });
+    }
+
+    function loadMetrics() {
+      fetch(`${API}/metrics?token=${TOKEN}`)
+        .then(r => r.json())
+        .then(data => {
+          const f = data.funnel;
+          const r = data.revenue;
+          const u = data.unit;
+          const a = data.activity;
+
+          let html = `
+            <h2>Воронка конверсии</h2>
+            <div class="cards">
+              <div class="card"><div class="value">${f.totalUsers}</div><div class="label">Регистрации</div></div>
+              <div class="card"><div class="value">${f.activeUsers}</div><div class="label">Активные</div></div>
+              <div class="card"><div class="value">${f.payingUsers}</div><div class="label">Платящие</div></div>
+            </div>
+            <div class="cards">
+              <div class="card"><div class="value">${f.registrationToActive}</div><div class="label">Рег → Актив</div></div>
+              <div class="card"><div class="value">${f.activeToPaying}</div><div class="label">Актив → Платящий</div></div>
+              <div class="card"><div class="value">${f.registrationToPaying}</div><div class="label">Рег → Платящий</div></div>
+            </div>
+
+            <h2>Выручка</h2>
+            <div class="cards">
+              <div class="card"><div class="value">${r.total.toLocaleString()}₽</div><div class="label">Всего</div></div>
+              <div class="card"><div class="value">${r.last7d.toLocaleString()}₽</div><div class="label">За 7 дней</div></div>
+              <div class="card"><div class="value">${r.last30d.toLocaleString()}₽</div><div class="label">За 30 дней</div></div>
+              <div class="card"><div class="value">${r.avgCheck.toLocaleString()}₽</div><div class="label">Средний чек</div></div>
+            </div>
+
+            <h2>Unit-экономика</h2>
+            <div class="cards">
+              <div class="card"><div class="value">${u.arpu}₽</div><div class="label">ARPU</div></div>
+              <div class="card"><div class="value">${u.arppu}₽</div><div class="label">ARPPU</div></div>
+              <div class="card"><div class="value">${u.ltv}₽</div><div class="label">LTV (оценка)</div></div>
+              <div class="card"><div class="value">${u.avgRequestsPerUser}</div><div class="label">Запросов на юзера</div></div>
+            </div>
+
+            <h2>Активность</h2>
+            <div class="cards">
+              <div class="card"><div class="value">${a.activeToday}</div><div class="label">Сегодня</div></div>
+              <div class="card"><div class="value">${a.active7d}</div><div class="label">За 7 дней</div></div>
+              <div class="card"><div class="value">${a.active30d}</div><div class="label">За 30 дней</div></div>
+              <div class="card"><div class="value">${a.retention}</div><div class="label">Retention (>1 дня)</div></div>
+            </div>
+
+            <h2>Популярные пакеты</h2>
+            <table><tr><th>Пакет</th><th>Покупок</th><th>Выручка</th></tr>
+            ${(data.packageStats || []).map(p => `<tr>
+              <td>${p.packageId || '—'}</td>
+              <td>${p._count.id}</td>
+              <td>${(p._sum.amount || 0).toLocaleString()}₽</td>
+            </tr>`).join('')}
+            </table>
+
+            <h2>Выручка по дням (30 дней)</h2>
+            <table><tr><th>Дата</th><th>Транзакций</th><th>Сумма</th></tr>
+            ${(data.dailyRevenue || []).map(d => `<tr>
+              <td>${new Date(d.date).toLocaleDateString()}</td>
+              <td>${d.transactions}</td>
+              <td>${d.revenue.toLocaleString()}₽</td>
+            </tr>`).join('')}
+            </table>
+
+            <h2>Активные пользователи по дням (30 дней)</h2>
+            <table><tr><th>Дата</th><th>Пользователей</th></tr>
+            ${(data.dailyActive || []).map(d => `<tr>
+              <td>${new Date(d.date).toLocaleDateString()}</td>
+              <td>${d.users}</td>
+            </tr>`).join('')}
+            </table>
+          `;
+          document.getElementById('tab-metrics').innerHTML = html;
         });
     }
 

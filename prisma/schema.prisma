@@ -87,6 +87,7 @@ model Payment {
   user        User            @relation(fields: [userId], references: [id])
   amount      Int
   tokens      Int
+  packageId   String?
   packageType PackageType
   provider    PaymentProvider
   status      PaymentStatus   @default(PENDING)

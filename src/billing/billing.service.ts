@@ -41,6 +41,7 @@ export class BillingService {
         userId,
         amount: pkg.priceRub * 100, // kopecks
         tokens: pkg.tokens,
+        packageId: pkg.id,
         packageType: pkg.type as any,
         provider: 'YUKASSA',
         status: 'PENDING',
@@ -129,6 +130,7 @@ export class BillingService {
         userId: payload.userId,
         amount: pkg.priceStars,
         tokens: pkg.tokens,
+        packageId: pkg.id,
         packageType: pkg.type as any,
         provider: 'STARS',
         status: 'SUCCEEDED',

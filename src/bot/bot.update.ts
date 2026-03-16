@@ -163,12 +163,12 @@ export class BotUpdate {
 
   @Command('privacy')
   async onPrivacy(@Ctx() ctx: Context) {
-    await ctx.reply(MESSAGES.PRIVACY_POLICY, { parse_mode: 'HTML', ...backToMenuKeyboard() });
+    await ctx.reply(MESSAGES.PRIVACY_POLICY, backToMenuKeyboard());
   }
 
   @Command('terms')
   async onTerms(@Ctx() ctx: Context) {
-    await ctx.reply(MESSAGES.TERMS_OF_SERVICE, { parse_mode: 'HTML', ...backToMenuKeyboard() });
+    await ctx.reply(MESSAGES.TERMS_OF_SERVICE, backToMenuKeyboard());
   }
 
   @Command('promo')

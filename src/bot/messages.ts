@@ -4,7 +4,7 @@ export const MESSAGES = {
 🤖 Я твой AI-помощник прямо в Telegram.
 
 <b>Что я умею:</b>
-💬 Отвечать на любые вопросы (GPT-5.1, GPT-4o)
+💬 Отвечать на любые вопросы (GPT-5.2, GPT-4o)
 🎨 Создавать картинки по описанию (Nano Banana 2, DALL-E 3)
 📸 Анализировать фото — просто отправь!
 🎤 Распознавать голосовые — просто запиши!
@@ -21,7 +21,7 @@ export const MESSAGES = {
 
   MAIN_MENU: (tokens: number) => `🤖 <b>ProstoAI</b> — твой AI-помощник
 
-💬 Отвечаю на любые вопросы (GPT-5.1, GPT-4o)
+💬 Отвечаю на любые вопросы (GPT-5.2, GPT-4o)
 🎨 Создаю картинки по описанию (Nano Banana 2, DALL-E 3)
 📸 Анализирую фото — просто отправь!
 🎤 Распознаю голосовые — просто запиши!
@@ -38,10 +38,10 @@ export const MESSAGES = {
 • GPT-4.1 Mini — x1 (самый экономный)
 • GPT-5 Mini — x1.5
 • GPT-4o — x2
-• GPT-5.1 — x3.3
+• GPT-5.2 — x3.3
 
 <b>Доступные модели:</b>
-• 💬 Чат: GPT-4.1 Mini, GPT-5 Mini, GPT-4o, GPT-5.1
+• 💬 Чат: GPT-4.1 Mini, GPT-5 Mini, GPT-4o, GPT-5.2
 • 🎨 Изображения: GPT Image Mini, Nano Banana 2, GPT Image 1, GPT Image 1.5, DALL-E 3
 • 📸 Анализ фото: GPT-4o Vision
 • 🎤 Голос: Whisper
@@ -227,7 +227,7 @@ export const MODEL_DESCRIPTIONS: Record<string, string> = {
 
 Отправьте текст, фото или голосовое!`,
 
-  'gpt-5.1': `🔥 <b>GPT-5.1</b>
+  'gpt-5.2': `🧠 <b>GPT-5.2</b>
 
 📝 Поддерживает: текст, фото, голос
 🧠 Самая умная модель — сложные задачи, код, глубокий анализ

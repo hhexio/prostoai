@@ -41,10 +41,10 @@ export const MODELS: Record<string, ModelConfig> = {
 
     estimatedTokens: 2000,
   },
-  'gpt-5.1': {
-    id: 'gpt-5.1',
-    apiModel: 'gpt-5.1',
-    displayName: 'GPT-5.1',
+  'gpt-5.2': {
+    id: 'gpt-5.2',
+    apiModel: 'gpt-5.2',
+    displayName: 'GPT-5.2',
     multiplier: 3.3,
     maxTokens: 2000,
     category: 'chat',

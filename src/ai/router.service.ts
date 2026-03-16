@@ -41,7 +41,7 @@ export class RouterService {
 
       if (isDrawRequest) return 'gpt-image-1-mini';
 
-      if (this.isComplexQuery(text)) return 'gpt-5.1';
+      if (this.isComplexQuery(text)) return 'gpt-5.2';
     }
 
     return 'gpt-4.1-mini';

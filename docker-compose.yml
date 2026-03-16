@@ -23,6 +23,8 @@ services:
     depends_on:
       - postgres
       - redis
+    ports:
+      - "3000:3000"
     restart: always
 
 volumes:

@@ -23,8 +23,7 @@ services:
     depends_on:
       - postgres
       - redis
-    ports:
-      - "3000:3000"
+    # No ports exposed - admin via SSH tunnel only
     restart: always
 
 volumes:

@@ -232,20 +232,12 @@ export class BotUpdate {
     const user = await this.users.findOrCreate(telegramId);
     await this.users.setSelectedModel(user.id, modelId);
 
-    // Special message for Nano Banana 2
-    if (modelId === 'nano-banana-2') {
-      await ctx.editMessageText(MESSAGES.NANO_BANANA_SELECTED, {
-        parse_mode: 'HTML',
-        ...backToMenuKeyboard(),
-      });
-    } else {
-      const description = MODEL_DESCRIPTIONS[modelId];
-      const text = description || MESSAGES.MODEL_SELECTED(model.displayName);
-      await ctx.editMessageText(text, {
-        parse_mode: 'HTML',
-        ...backToMenuKeyboard(),
-      });
-    }
+    const descFn = MODEL_DESCRIPTIONS[modelId];
+    const text = descFn ? descFn(user.balance) : MESSAGES.MODEL_SELECTED(model.displayName);
+    await ctx.editMessageText(text, {
+      parse_mode: 'HTML',
+      ...backToMenuKeyboard(),
+    });
   }
 
   @Action('profile')

@@ -29,7 +29,7 @@ export const MODELS: Record<string, ModelConfig> = {
     maxTokens: 2000,
     category: 'chat',
 
-    estimatedTokens: 2000,
+    estimatedTokens: 3500,
   },
   'gpt-4o': {
     id: 'gpt-4o',
@@ -39,7 +39,7 @@ export const MODELS: Record<string, ModelConfig> = {
     maxTokens: 2000,
     category: 'chat',
 
-    estimatedTokens: 2000,
+    estimatedTokens: 5000,
   },
   'gpt-5.2': {
     id: 'gpt-5.2',
@@ -49,7 +49,7 @@ export const MODELS: Record<string, ModelConfig> = {
     maxTokens: 2000,
     category: 'chat',
 
-    estimatedTokens: 2000,
+    estimatedTokens: 8000,
   },
 
   // Image Models (OpenAI endpoint)
@@ -58,40 +58,40 @@ export const MODELS: Record<string, ModelConfig> = {
     apiModel: 'gpt-image-1-mini',
     displayName: 'GPT Image Mini',
     multiplier: 1,
-    maxTokens: 8000,
+    maxTokens: 12000,
     category: 'image',
 
-    estimatedTokens: 8000,
+    estimatedTokens: 12000,
   },
   'gpt-image-1': {
     id: 'gpt-image-1',
     apiModel: 'gpt-image-1',
     displayName: 'GPT Image 1',
     multiplier: 1,
-    maxTokens: 15000,
+    maxTokens: 25000,
     category: 'image',
 
-    estimatedTokens: 15000,
+    estimatedTokens: 25000,
   },
   'gpt-image-1.5': {
     id: 'gpt-image-1.5',
     apiModel: 'gpt-image-1.5',
     displayName: 'GPT Image 1.5',
     multiplier: 1,
-    maxTokens: 30000,
+    maxTokens: 35000,
     category: 'image',
 
-    estimatedTokens: 30000,
+    estimatedTokens: 35000,
   },
   'dall-e-3': {
     id: 'dall-e-3',
     apiModel: 'dall-e-3',
     displayName: 'DALL-E 3',
     multiplier: 1,
-    maxTokens: 15000,
+    maxTokens: 25000,
     category: 'image',
 
-    estimatedTokens: 15000,
+    estimatedTokens: 25000,
   },
 
   // Nano Banana 2 (Google Gemini endpoint)
@@ -100,10 +100,10 @@ export const MODELS: Record<string, ModelConfig> = {
     apiModel: 'gemini-3.1-flash-image-preview',
     displayName: 'Nano Banana 2',
     multiplier: 1,
-    maxTokens: 15000,
+    maxTokens: 50000,
     category: 'image',
 
-    estimatedTokens: 15000,
+    estimatedTokens: 50000,
     endpoint: 'google',
   },
 
@@ -125,10 +125,10 @@ export const MODELS: Record<string, ModelConfig> = {
     apiModel: 'whisper-1',
     displayName: 'Whisper',
     multiplier: 1,
-    maxTokens: 2000,
+    maxTokens: 1000,
     category: 'audio',
 
-    estimatedTokens: 2000,
+    estimatedTokens: 1000,
   },
 };
 

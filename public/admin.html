@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ProstoAI Admin</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; padding: 20px; }
+    h1 { color: #e94560; margin-bottom: 20px; }
+    h2 { color: #0f3460; background: #e94560; padding: 10px 15px; border-radius: 8px; margin: 20px 0 10px; }
+    .login { max-width: 400px; margin: 100px auto; text-align: center; }
+    .login input { padding: 12px; width: 100%; border: 1px solid #333; border-radius: 8px; background: #16213e; color: #eee; font-size: 16px; margin: 10px 0; }
+    .login button, .tab-btn { padding: 12px 24px; background: #e94560; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
+    .login button:hover, .tab-btn:hover { background: #c73651; }
+    .tab-btn { margin: 0 5px 10px; opacity: 0.6; }
+    .tab-btn.active { opacity: 1; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 15px 0; }
+    .card { background: #16213e; padding: 20px; border-radius: 12px; text-align: center; }
+    .card .value { font-size: 32px; font-weight: bold; color: #e94560; }
+    .card .label { color: #888; margin-top: 5px; }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #222; }
+    th { background: #16213e; color: #e94560; }
+    tr:hover { background: #16213e44; }
+    .feedback-item { background: #16213e; padding: 15px; border-radius: 8px; margin: 10px 0; }
+    .feedback-item .meta { color: #888; font-size: 13px; }
+    .feedback-item .msg { margin: 8px 0; }
+    .feedback-item .reply { color: #4ecca3; margin-top: 5px; }
+    #content { display: none; }
+  </style>
+</head>
+<body>
+  <div class="login" id="loginForm">
+    <h1>🤖 ProstoAI Admin</h1>
+    <input type="password" id="tokenInput" placeholder="Admin token">
+    <br>
+    <button onclick="login()">Войти</button>
+  </div>
+
+  <div id="content">
+    <h1>🤖 ProstoAI Admin</h1>
+    <div>
+      <button class="tab-btn active" onclick="showTab('stats', event)">📊 Статистика</button>
+      <button class="tab-btn" onclick="showTab('feedback', event)">📩 Обратная связь</button>
+      <button class="tab-btn" onclick="showTab('users', event)">👥 Пользователи</button>
+    </div>
+
+    <div id="tab-stats"></div>
+    <div id="tab-feedback" style="display:none"></div>
+    <div id="tab-users" style="display:none"></div>
+  </div>
+
+  <script>
+    let TOKEN = '';
+    const API = '/api/admin';
+
+    function login() {
+      TOKEN = document.getElementById('tokenInput').value;
+      fetch(`${API}/stats?token=${TOKEN}`)
+        .then(r => { if (!r.ok) throw new Error('Unauthorized'); return r.json(); })
+        .then(data => {
+          document.getElementById('loginForm').style.display = 'none';
+          document.getElementById('content').style.display = 'block';
+          renderStats(data);
+        })
+        .catch(() => alert('Неверный токен'));
+    }
+
+    function showTab(name, event) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      if (event && event.target) event.target.classList.add('active');
+      document.querySelectorAll('[id^="tab-"]').forEach(t => t.style.display = 'none');
+      document.getElementById('tab-' + name).style.display = 'block';
+      if (name === 'feedback') loadFeedback();
+      if (name === 'users') loadUsers();
+    }
+
+    function renderStats(data) {
+      const o = data.overview;
+      let html = `
+        <div class="cards">
+          <div class="card"><div class="value">${o.totalUsers}</div><div class="label">Пользователей</div></div>
+          <div class="card"><div class="value">${o.activeToday}</div><div class="label">Активных сегодня</div></div>
+          <div class="card"><div class="value">${o.totalRequests}</div><div class="label">Всего запросов</div></div>
+          <div class="card"><div class="value">${o.totalRevenue}₽</div><div class="label">Выручка</div></div>
+        </div>
+        <h2>Модели</h2>
+        <table><tr><th>Модель</th><th>Запросов</th><th>Токенов</th></tr>
+        ${data.modelStats.map(m => `<tr><td>${m.model}</td><td>${m._count.id}</td><td>${(m._sum.balanceCost || 0).toLocaleString()}</td></tr>`).join('')}
+        </table>
+        <h2>Новые пользователи (30 дней)</h2>
+        <table><tr><th>Дата</th><th>Кол-во</th></tr>
+        ${(data.newUsersPerDay || []).map(d => `<tr><td>${d.date}</td><td>${d.count}</td></tr>`).join('')}
+        </table>
+        <h2>Запросы в день (30 дней)</h2>
+        <table><tr><th>Дата</th><th>Кол-во</th></tr>
+        ${(data.requestsPerDay || []).map(d => `<tr><td>${d.date}</td><td>${d.count}</td></tr>`).join('')}
+        </table>
+      `;
+      document.getElementById('tab-stats').innerHTML = html;
+    }
+
+    function loadFeedback() {
+      fetch(`${API}/feedback?token=${TOKEN}`)
+        .then(r => r.json())
+        .then(data => {
+          if (!data.length) {
+            document.getElementById('tab-feedback').innerHTML = '<p style="margin-top:15px">Нет обратной связи</p>';
+            return;
+          }
+          let html = data.map(f => `
+            <div class="feedback-item">
+              <div class="meta">#${f.id} | User #${f.user.id} ${f.user.username ? '@' + f.user.username : f.user.firstName || ''} | ${new Date(f.createdAt).toLocaleString()}</div>
+              <div class="msg">${f.message}</div>
+              ${f.reply ? `<div class="reply">↪ Ответ: ${f.reply}</div>` : `<div class="meta">Без ответа. В боте: /reply ${f.id} текст</div>`}
+            </div>
+          `).join('');
+          document.getElementById('tab-feedback').innerHTML = html;
+        });
+    }
+
+    function loadUsers() {
+      fetch(`${API}/users?token=${TOKEN}`)
+        .then(r => r.json())
+        .then(data => {
+          let html = `<p style="margin:10px 0">Всего: ${data.total}</p>
+          <table><tr><th>#</th><th>Имя</th><th>Баланс</th><th>Запросов</th><th>Дата</th></tr>
+          ${data.users.map(u => `<tr>
+            <td>${u.id}</td>
+            <td>${u.firstName || ''} ${u.username ? '@' + u.username : ''}</td>
+            <td>${u.balance.toLocaleString()}</td>
+            <td>${u._count.usages}</td>
+            <td>${new Date(u.createdAt).toLocaleDateString()}</td>
+          </tr>`).join('')}
+          </table>`;
+          document.getElementById('tab-users').innerHTML = html;
+        });
+    }
+  </script>
+</body>
+</html>

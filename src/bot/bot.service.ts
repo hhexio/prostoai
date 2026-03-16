@@ -109,6 +109,28 @@ export class BotService {
       }
     }
 
+    // Feedback state check
+    const userState = await this.redis.get(`state:${user.telegramId}`);
+    if (userState === 'awaiting_feedback') {
+      const feedbackText = messageText || (ctx.message as any)?.caption || '[фото/голосовое]';
+      await this.prisma.feedback.create({ data: { userId: user.id, message: feedbackText } });
+      await this.redis.del(`state:${user.telegramId}`);
+      await ctx.reply(
+        '✅ Спасибо за обратную связь! Мы обязательно прочитаем ваше сообщение.',
+        Markup.inlineKeyboard([[Markup.button.callback('◀️ В главное меню', 'back_menu')]]),
+      );
+      const adminId = this.config.get('ADMIN_TELEGRAM_ID');
+      if (adminId) {
+        try {
+          await ctx.telegram.sendMessage(
+            adminId,
+            `📩 Новый отзыв от пользователя #${user.id} (@${user.username || 'без username'}):\n\n${feedbackText}`,
+          );
+        } catch {}
+      }
+      return;
+    }
+
     // Content filter
     const textToCheck = messageText || (ctx.message as any)?.caption || '';
     if (textToCheck && this.isBlockedContent(textToCheck)) {

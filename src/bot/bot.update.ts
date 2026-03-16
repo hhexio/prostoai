@@ -9,6 +9,9 @@ import {
 } from 'nestjs-telegraf';
 import { Context, Markup } from 'telegraf';
 import { Logger } from '@nestjs/common';
+import { InjectRedis } from '@nestjs-modules/ioredis';
+import Redis from 'ioredis';
+import { PrismaService } from '../prisma/prisma.service';
 import { BotService } from './bot.service';
 import { UsersService } from '../users/users.service';
 import { ReferralService } from '../users/referral.service';
@@ -40,6 +43,8 @@ export class BotUpdate {
     private readonly billing: BillingService,
     private readonly stars: StarsService,
     private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
+    @InjectRedis() private readonly redis: Redis,
   ) {}
 
   @Start()
@@ -189,6 +194,48 @@ export class BotUpdate {
       await ctx.reply(MESSAGES.PROMO_SUCCESS(result.tokens), { parse_mode: 'HTML', ...backToMenuKeyboard() });
     } else {
       await ctx.reply(MESSAGES.PROMO_INVALID, { parse_mode: 'HTML', ...backToMenuKeyboard() });
+    }
+  }
+
+  @Command('feedback')
+  async onFeedback(@Ctx() ctx: Context) {
+    const telegramId = BigInt(ctx.from!.id);
+    await this.redis.set(`state:${telegramId}`, 'awaiting_feedback', 'EX', 300);
+    await ctx.reply(
+      '📝 Напишите ваше сообщение, пожелание или жалобу.\n\nМы обязательно прочитаем и ответим!',
+      Markup.inlineKeyboard([[Markup.button.callback('◀️ В главное меню', 'back_menu')]]),
+    );
+  }
+
+  @Command('reply')
+  async onReply(@Ctx() ctx: Context) {
+    const adminId = this.config.get('ADMIN_TELEGRAM_ID');
+    if (String(ctx.from!.id) !== adminId) return;
+
+    const text = (ctx.message as any)?.text ?? '';
+    const parts = text.split(' ');
+    const feedbackId = parseInt(parts[1]);
+    const replyText = parts.slice(2).join(' ');
+
+    if (!feedbackId || !replyText) {
+      await ctx.reply('Формат: /reply <id> <текст ответа>');
+      return;
+    }
+
+    try {
+      const feedback = await this.prisma.feedback.update({
+        where: { id: feedbackId },
+        data: { reply: replyText, repliedAt: new Date() },
+        include: { user: { select: { telegramId: true, id: true } } },
+      });
+      await ctx.telegram.sendMessage(
+        feedback.user.telegramId.toString(),
+        `💬 Ответ от команды ProstoAI:\n\n${replyText}`,
+        Markup.inlineKeyboard([[Markup.button.callback('◀️ В главное меню', 'back_menu')]]),
+      );
+      await ctx.reply(`✅ Ответ отправлен пользователю #${feedback.user.id}`);
+    } catch (err: any) {
+      await ctx.reply(`❌ Не удалось отправить: ${err.message}`);
     }
   }
 

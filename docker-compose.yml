@@ -7,11 +7,11 @@ services:
       POSTGRES_DB: prostoai
     volumes:
       - pgdata:/var/lib/postgresql/data
-    restart: unless-stopped
+    restart: always
 
   redis:
     image: redis:7-alpine
-    restart: unless-stopped
+    restart: always
 
   app:
     build: .
@@ -23,7 +23,7 @@ services:
     depends_on:
       - postgres
       - redis
-    restart: unless-stopped
+    restart: always
 
 volumes:
   pgdata:

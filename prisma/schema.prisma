@@ -23,6 +23,17 @@ model User {
   usages              Usage[]
   payments            Payment[]
   referrals           Referral[]     @relation("ReferrerRelation")
+  feedbacks           Feedback[]
+}
+
+model Feedback {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id])
+  message   String
+  reply     String?
+  repliedAt DateTime?
+  createdAt DateTime  @default(now())
 }
 
 enum PackageType {

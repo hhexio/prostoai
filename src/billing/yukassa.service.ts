@@ -15,32 +15,21 @@ export class YukassaService {
     private readonly config: ConfigService,
   ) {}
 
-  private get auth() {
-    const shopId = this.config.get('YUKASSA_SHOP_ID');
-    const secretKey = this.config.get('YUKASSA_SECRET_KEY');
-    return Buffer.from(`${shopId}:${secretKey}`).toString('base64');
-  }
-
   async createPayment(
     amountRub: number,
     description: string,
-    returnUrl: string,
     metadata: Record<string, any>,
-    customerEmail?: string,
     packageName?: string,
   ): Promise<any> {
     const amountStr = amountRub.toFixed(2);
     const body: any = {
       amount: { value: amountStr, currency: 'RUB' },
-      confirmation: { type: 'redirect', return_url: returnUrl },
+      confirmation: { type: 'redirect', return_url: 'https://t.me/my_prostoai_bot' },
       capture: true,
       description,
       metadata,
-    };
-
-    if (customerEmail) {
-      body.receipt = {
-        customer: { email: customerEmail },
+      receipt: {
+        customer: { email: 'receipt@prostoai.ru' },
         items: [
           {
             description: packageName ?? description,
@@ -51,17 +40,21 @@ export class YukassaService {
             payment_mode: 'full_payment',
           },
         ],
-      };
-    }
+      },
+    };
 
     try {
       const response = await firstValueFrom(
         this.httpService.post(`${YUKASSA_API}/payments`, body, {
           headers: {
-            Authorization: `Basic ${this.auth}`,
             'Idempotence-Key': uuidv4(),
             'Content-Type': 'application/json',
           },
+          auth: {
+            username: this.config.get('YUKASSA_SHOP_ID') || '',
+            password: this.config.get('YUKASSA_SECRET_KEY') || '',
+          },
+          timeout: 30000,
         }),
       );
       return response.data;
@@ -75,7 +68,10 @@ export class YukassaService {
     try {
       const response = await firstValueFrom(
         this.httpService.get(`${YUKASSA_API}/payments/${paymentId}`, {
-          headers: { Authorization: `Basic ${this.auth}` },
+          auth: {
+            username: this.config.get('YUKASSA_SHOP_ID') || '',
+            password: this.config.get('YUKASSA_SECRET_KEY') || '',
+          },
         }),
       );
       return response.data;

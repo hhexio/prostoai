@@ -120,14 +120,14 @@ export function buyMethodKeyboard(packageId: string) {
 
   if (starsAvailable) {
     return Markup.inlineKeyboard([
-      [Markup.button.callback('⭐ Оплата Telegram Stars', `pay_stars_${packageId}`)],
-      [Markup.button.callback('💳 Оплата картой', `pay_card_${packageId}`)],
+      [Markup.button.callback(`⭐ Telegram Stars — ${pkg.priceStars} ⭐`, `pay_stars_${packageId}`)],
+      [Markup.button.callback(`💳 Картой / СБП — ${pkg.priceRub}₽`, `pay_yukassa_${packageId}`)],
       [Markup.button.callback('◀️ В главное меню', 'back_menu')],
     ]);
   }
 
   return Markup.inlineKeyboard([
-    [Markup.button.callback('💳 Оплата картой — скоро!', `pay_card_${packageId}`)],
+    [Markup.button.callback(`💳 Картой / СБП — ${pkg!.priceRub}₽`, `pay_yukassa_${packageId}`)],
     [Markup.button.callback('◀️ В главное меню', 'back_menu')],
   ]);
 }

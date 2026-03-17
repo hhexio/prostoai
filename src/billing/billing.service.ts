@@ -29,12 +29,10 @@ export class BillingService {
   async createYukassaPayment(
     userId: number,
     packageId: string,
-    userEmail?: string,
+    chatId?: string,
   ): Promise<{ paymentUrl: string; paymentId: number }> {
     const pkg = this.getPackageById(packageId);
     if (!pkg) throw new Error(`Package not found: ${packageId}`);
-
-    const webhookUrl = this.config.get('WEBHOOK_URL');
 
     const payment = await this.prisma.payment.create({
       data: {
@@ -50,10 +48,8 @@ export class BillingService {
 
     const yukassaPayment = await this.yukassa.createPayment(
       pkg.priceRub,
-      `${pkg.tokens.toLocaleString('ru-RU')} токенов для ProstoAI`,
-      `${webhookUrl}/api/yukassa/webhook`,
-      { userId, packageId, paymentId: payment.id },
-      userEmail,
+      `ProstoAI — ${pkg.name}`,
+      { userId, packageId, paymentId: payment.id, chatId: chatId || '' },
       pkg.name,
     );
 

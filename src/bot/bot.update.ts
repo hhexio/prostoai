@@ -353,34 +353,35 @@ export class BotUpdate {
     });
   }
 
-  @Action(/^pay_card_(.+)$/)
-  async onPayCard(@Ctx() ctx: Context) {
-    await ctx.editMessageText(
-      '💳 Оплата картой скоро будет доступна!\n\nПока можно приобрести пакеты до 399₽ за Telegram Stars ⭐\nВыберите другой пакет через /buy',
-      { parse_mode: 'HTML', ...backToMenuKeyboard() },
-    );
-  }
-
   @Action(/^pay_yukassa_(.+)$/)
   async onPayYukassa(@Ctx() ctx: Context) {
     const match = (ctx as any).match;
     const packageId = match?.[1];
     const telegramId = BigInt(ctx.from!.id);
     const user = await this.users.findOrCreate(telegramId);
+    const pkg = this.billing.getPackageById(packageId);
+    if (!pkg) return;
 
     await ctx.answerCbQuery('Создаём платёж...');
 
     try {
-      const { Markup } = await import('telegraf');
-      const { paymentUrl } = await this.billing.createYukassaPayment(user.id, packageId);
-      await ctx.reply('💳 Перейдите по ссылке для оплаты:', {
-        ...Markup.inlineKeyboard([
-          [Markup.button.url('Оплатить через ЮKassa', paymentUrl)],
+      const chatId = String(ctx.chat!.id);
+      const { paymentUrl } = await this.billing.createYukassaPayment(user.id, packageId, chatId);
+      await ctx.editMessageText(
+        `💳 Оплата пакета "${pkg.name}"\n\n` +
+        `💰 Сумма: ${pkg.priceRub}₽\n` +
+        `📦 Токенов: ${pkg.tokens.toLocaleString('ru-RU')}\n\n` +
+        `Нажмите кнопку ниже для оплаты:`,
+        Markup.inlineKeyboard([
+          [Markup.button.url('💳 Оплатить', paymentUrl)],
           [Markup.button.callback('◀️ В главное меню', 'back_menu')],
         ]),
-      });
+      );
     } catch {
-      await ctx.reply('❌ Не удалось создать платёж. Попробуйте позже.', backToMenuKeyboard());
+      await ctx.editMessageText(
+        '😔 Не удалось создать платёж. Попробуйте позже.',
+        Markup.inlineKeyboard([[Markup.button.callback('◀️ В главное меню', 'back_menu')]]),
+      );
     }
   }
 

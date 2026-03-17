@@ -159,6 +159,46 @@ export class AiService {
     }
   }
 
+  async generateImageWithMultipleReferences(modelId: string, prompt: string, images: Buffer[]): Promise<AiResponse> {
+    const model = getModel(modelId);
+    if (!model) throw new Error(`Unknown model: ${modelId}`);
+
+    const start = Date.now();
+    try {
+      const form = new FormData();
+      form.append('model', model.apiModel);
+      form.append('prompt', prompt || 'edit these images');
+      form.append('n', '1');
+      form.append('size', '1024x1024');
+      form.append('response_format', 'b64_json');
+
+      images.forEach((img, i) => {
+        form.append('image[]', img, { filename: `image_${i}.png`, contentType: 'image/png' });
+      });
+
+      const response = await firstValueFrom(
+        this.httpService.post(
+          `${this.baseUrl}/images/edits`,
+          form,
+          { headers: { ...this.headers, ...form.getHeaders() }, timeout: 120000 },
+        ),
+      );
+
+      const data = response.data?.data?.[0];
+      const imageBuffer = data?.b64_json ? Buffer.from(data.b64_json, 'base64') : undefined;
+
+      return {
+        imageBuffer,
+        inputTokens: response.data?.usage?.input_tokens ?? 0,
+        outputTokens: response.data?.usage?.output_tokens ?? 0,
+        totalCost: model.estimatedTokens,
+        responseTime: Date.now() - start,
+      };
+    } catch (err) {
+      throw this.handleError(err);
+    }
+  }
+
   async generateImageGemini(modelId: string, prompt: string, imageBase64?: string): Promise<AiResponse> {
     const model = getModel(modelId);
     if (!model) throw new Error(`Unknown model: ${modelId}`);

@@ -33,7 +33,7 @@ interface MediaGroupEntry {
 const MAX_TEXT_LENGTH = 4000;
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024; // 5 MB
 const MAX_VOICE_DURATION = 300; // 5 minutes
-const MAX_MEDIA_GROUP_PHOTOS = 5;
+const MAX_MEDIA_GROUP_PHOTOS = 3;
 
 @Injectable()
 export class BotService {
@@ -153,9 +153,9 @@ export class BotService {
       if (!imgAllowed) return;
     }
 
-    // Media group handling for Nano Banana 2 (multiple photos in one message)
+    // Media group handling for all image models (multiple photos in one message)
     const mediaGroupId = (ctx.message as any)?.media_group_id;
-    if (type === 'photo' && mediaGroupId && model?.endpoint === 'google') {
+    if (type === 'photo' && mediaGroupId && model?.category === 'image') {
       await this.handleMediaGroupPhoto(ctx, mediaGroupId, user, modelId);
       return;
     }
@@ -395,22 +395,23 @@ export class BotService {
     const statusMsg = await ctx.reply('🎨 Генерирую изображение... Это может занять 10-30 секунд ⏳');
 
     try {
-      const parts: any[] = [];
-      if (group.caption) {
-        parts.push({ text: group.caption });
-      } else {
-        parts.push({ text: 'Edit these images' });
-      }
-      for (const photo of group.photos) {
-        parts.push({
-          inline_data: {
-            mime_type: 'image/jpeg',
-            data: photo.toString('base64'),
-          },
-        });
-      }
+      const model = getModel(modelId);
+      let aiResponse;
 
-      const aiResponse = await this.ai.generateImageGeminiRaw(parts);
+      if (model?.endpoint === 'google') {
+        const parts: any[] = [];
+        parts.push({ text: group.caption || 'Edit these images' });
+        for (const photo of group.photos) {
+          parts.push({ inline_data: { mime_type: 'image/jpeg', data: photo.toString('base64') } });
+        }
+        aiResponse = await this.ai.generateImageGeminiRaw(parts);
+      } else {
+        aiResponse = await this.ai.generateImageWithMultipleReferences(
+          modelId,
+          group.caption || 'Edit these images',
+          group.photos,
+        );
+      }
 
       // Deduct ACTUAL cost after AI call
       const actualCost = aiResponse.totalCost;
@@ -436,8 +437,6 @@ export class BotService {
           isFree: isAdmin,
         },
       });
-
-      const model = getModel(modelId);
 
       // Send response
       try {
@@ -465,7 +464,7 @@ export class BotService {
       }
 
       if (wasCapped) {
-        await ctx.reply('⚠️ Обработаны первые 5 фото. Максимум 5 фото в одном запросе.');
+        await ctx.reply('⚠️ Обработаны первые 3 фото. Максимум 3 фото в одном запросе.');
       }
 
       // Post-response UX: show cost + action buttons

@@ -1,7 +1,8 @@
-import { Controller, Post, Body, Req, HttpCode } from '@nestjs/common';
+import { Controller, Post, Body, Req, HttpCode, Logger } from '@nestjs/common';
 import { Request } from 'express';
+import { InjectBot } from 'nestjs-telegraf';
+import { Telegraf, Markup } from 'telegraf';
 import { BillingService } from './billing.service';
-import { Logger } from '@nestjs/common';
 
 // YooKassa webhook IP whitelist
 const YUKASSA_IPS = [
@@ -20,7 +21,10 @@ function isAllowedIp(ip: string): boolean {
 export class BillingController {
   private readonly logger = new Logger(BillingController.name);
 
-  constructor(private readonly billing: BillingService) {}
+  constructor(
+    private readonly billing: BillingService,
+    @InjectBot() private readonly bot: Telegraf,
+  ) {}
 
   @Post('yukassa/webhook')
   @HttpCode(200)
@@ -44,6 +48,19 @@ export class BillingController {
           break;
         case 'payment.canceled':
           await this.billing.cancelPayment(externalId);
+          const chatId = body?.object?.metadata?.chatId;
+          if (chatId) {
+            try {
+              await this.bot.telegram.sendMessage(
+                chatId,
+                '❌ Оплата не прошла.\n\nПопробуйте ещё раз или выберите другой способ оплаты.',
+                Markup.inlineKeyboard([
+                  [Markup.button.callback('💎 Купить токены', 'buy_tokens')],
+                  [Markup.button.callback('◀️ В главное меню', 'back_menu')],
+                ]),
+              );
+            } catch {}
+          }
           break;
         case 'refund.succeeded':
           await this.billing.handleRefund(externalId);

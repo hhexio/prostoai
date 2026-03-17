@@ -1,21 +1,8 @@
-import { Controller, Post, Body, Req, HttpCode, Logger } from '@nestjs/common';
-import { Request } from 'express';
+import { Controller, Post, Body, HttpCode, Logger } from '@nestjs/common';
 import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf, Markup } from 'telegraf';
 import { BillingService } from './billing.service';
-
-// YooKassa webhook IP whitelist
-const YUKASSA_IPS = [
-  '185.71.76.',
-  '185.71.77.',
-  '77.75.153.',
-  '77.75.156.11',
-  '77.75.156.35',
-];
-
-function isAllowedIp(ip: string): boolean {
-  return YUKASSA_IPS.some((allowed) => ip.startsWith(allowed));
-}
+import { YukassaService } from './yukassa.service';
 
 @Controller('api')
 export class BillingController {
@@ -23,55 +10,49 @@ export class BillingController {
 
   constructor(
     private readonly billing: BillingService,
+    private readonly yukassa: YukassaService,
     @InjectBot() private readonly bot: Telegraf,
   ) {}
 
   @Post('yukassa/webhook')
   @HttpCode(200)
-  async yukassaWebhook(@Body() body: any, @Req() req: Request) {
-    const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0] ?? req.ip ?? '';
+  async yukassaWebhook(@Body() body: any) {
+    const paymentId = body?.object?.id;
 
-    if (!isAllowedIp(clientIp)) {
-      this.logger.warn(`Blocked YooKassa webhook from IP: ${clientIp}`);
-      return { ok: false };
+    if (!paymentId) {
+      return { error: 'No payment ID' };
     }
 
-    const eventType = body?.event;
-    const externalId = body?.object?.id;
-
-    this.logger.log(`YooKassa webhook: ${eventType}, payment: ${externalId}`);
+    this.logger.log(`YooKassa webhook: ${body?.event}, payment: ${paymentId}`);
 
     try {
-      switch (eventType) {
-        case 'payment.succeeded':
-          await this.billing.confirmPayment(externalId);
-          break;
-        case 'payment.canceled':
-          await this.billing.cancelPayment(externalId);
-          const chatId = body?.object?.metadata?.chatId;
-          if (chatId) {
-            try {
-              await this.bot.telegram.sendMessage(
-                chatId,
-                '❌ Оплата не прошла.\n\nПопробуйте ещё раз или выберите другой способ оплаты.',
-                Markup.inlineKeyboard([
-                  [Markup.button.callback('💎 Купить токены', 'buy_tokens')],
-                  [Markup.button.callback('◀️ В главное меню', 'back_menu')],
-                ]),
-              );
-            } catch {}
-          }
-          break;
-        case 'refund.succeeded':
-          await this.billing.handleRefund(externalId);
-          break;
-        default:
-          this.logger.log(`Unhandled event type: ${eventType}`);
+      // Verify payment via API instead of IP whitelist
+      const payment = await this.yukassa.getPayment(paymentId);
+
+      if (payment.status === 'succeeded') {
+        await this.billing.confirmPayment(paymentId);
+      } else if (payment.status === 'canceled') {
+        await this.billing.cancelPayment(paymentId);
+        const chatId = payment.metadata?.chatId;
+        if (chatId) {
+          try {
+            await this.bot.telegram.sendMessage(
+              chatId,
+              '❌ Оплата не прошла.\n\nПопробуйте ещё раз или выберите другой способ оплаты.',
+              Markup.inlineKeyboard([
+                [Markup.button.callback('💎 Купить токены', 'buy_tokens')],
+                [Markup.button.callback('◀️ В главное меню', 'back_menu')],
+              ]),
+            );
+          } catch {}
+        }
+      } else {
+        this.logger.log(`Payment ${paymentId} status: ${payment.status}, ignoring`);
       }
     } catch (err) {
-      this.logger.error(`YooKassa webhook error for ${eventType}`, err);
+      this.logger.error(`Webhook verification failed for ${paymentId}`, err?.message);
     }
 
-    return { ok: true };
+    return { status: 'ok' };
   }
 }

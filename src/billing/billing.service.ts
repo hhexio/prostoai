@@ -4,7 +4,7 @@ import { YukassaService } from './yukassa.service';
 import { TOKEN_PACKAGES, PackageConfig } from '../bot/keyboards';
 import { ConfigService } from '@nestjs/config';
 import { MESSAGES } from '../bot/messages';
-import { Telegraf } from 'telegraf';
+import { Telegraf, Markup } from 'telegraf';
 import { InjectBot } from 'nestjs-telegraf';
 
 @Injectable()
@@ -105,7 +105,12 @@ export class BillingService {
       await this.bot.telegram.sendMessage(
         Number(payment.user.telegramId),
         MESSAGES.PAYMENT_SUCCESS(payment.tokens, packageName),
-        { parse_mode: 'HTML' },
+        {
+          parse_mode: 'HTML',
+          ...Markup.inlineKeyboard([
+            [Markup.button.callback('◀️ В главное меню', 'back_menu')],
+          ]),
+        },
       );
     } catch (e) {
       this.logger.warn(`Could not notify user ${payment.user.telegramId} about payment`);

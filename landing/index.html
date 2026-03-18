@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ProstoAI — все модели AI в одном Telegram-боте</title>
+  <meta name="description" content="GPT-5, DALL-E 3, генерация изображений — в Telegram без VPN. Оплата в рублях. 15 000 токенов бесплатно.">
+  <meta name="keywords" content="AI бот, ChatGPT Telegram, нейросеть Telegram, GPT бот, генерация картинок, DALL-E Telegram, GPT-5">
+  <meta property="og:title" content="ProstoAI — AI просто">
+  <meta property="og:description" content="Все модели AI в одном Telegram-боте. Без VPN, оплата в рублях.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://prostoaibot.ru">
+  <link rel="canonical" href="https://prostoaibot.ru">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-primary: #FDFBF7;
+      --bg-secondary: #F5F1EB;
+      --text-primary: #1A1A1A;
+      --text-secondary: #6B6B6B;
+      --text-muted: #9B9B9B;
+      --accent: #1A1A1A;
+      --accent-hover: #333333;
+      --accent-text: #FDFBF7;
+      --border: #E8E4DD;
+      --border-light: #F0ECE6;
+      --card-bg: #FFFFFF;
+      --card-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Onest', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 16px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* ─── HEADER ─── */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(253, 251, 247, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+    }
+
+    .logo {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-decoration: none;
+      letter-spacing: -0.3px;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 36px;
+    }
+
+    .nav a {
+      font-size: 15px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .nav a:hover { color: var(--text-primary); }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent);
+      color: var(--accent-text);
+      font-family: 'Onest', sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      padding: 10px 20px;
+      border-radius: 10px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn:hover { background: var(--accent-hover); }
+
+    .btn-lg {
+      font-size: 16px;
+      padding: 14px 28px;
+      border-radius: 12px;
+    }
+
+    /* ─── HERO ─── */
+    .hero {
+      padding: 140px 0 120px;
+      text-align: center;
+    }
+
+    .hero-label {
+      display: inline-block;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+
+    .hero h1 {
+      font-size: clamp(40px, 6vw, 64px);
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -1.5px;
+      max-width: 780px;
+      margin: 0 auto 24px;
+    }
+
+    .hero p {
+      font-size: clamp(17px, 2vw, 20px);
+      color: var(--text-secondary);
+      max-width: 560px;
+      margin: 0 auto 40px;
+      line-height: 1.6;
+    }
+
+    .hero-cta {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .hero-note {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* ─── SECTION BASE ─── */
+    section { padding: 120px 0; }
+    section + section { border-top: 1px solid var(--border-light); }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: clamp(28px, 4vw, 42px);
+      font-weight: 700;
+      letter-spacing: -0.8px;
+      line-height: 1.15;
+      margin-bottom: 16px;
+    }
+
+    .section-sub {
+      font-size: 17px;
+      color: var(--text-secondary);
+      max-width: 520px;
+      line-height: 1.6;
+    }
+
+    .section-header { margin-bottom: 64px; }
+
+    /* ─── MODELS ─── */
+    .models-bg { background: var(--bg-secondary); }
+
+    .models-group { margin-bottom: 48px; }
+    .models-group:last-child { margin-bottom: 0; }
+
+    .models-group-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .models-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
+    }
+
+    .model-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--card-shadow);
+      transition: border-color 0.2s;
+    }
+
+    .model-card:hover { border-color: #C8C4BD; }
+
+    .model-name {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .model-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 12px;
+    }
+
+    .model-cost {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .models-auto-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 12px;
+    }
+
+    .auto-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      box-shadow: var(--card-shadow);
+    }
+
+    .auto-card-name {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .auto-card-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* ─── HOW IT WORKS ─── */
+    .steps {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr;
+      align-items: start;
+      gap: 0;
+    }
+
+    .step {
+      text-align: center;
+      padding: 0 16px;
+    }
+
+    .step-num {
+      font-size: 48px;
+      font-weight: 700;
+      color: var(--border);
+      line-height: 1;
+      margin-bottom: 20px;
+      letter-spacing: -2px;
+    }
+
+    .step-title {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .step-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .step-arrow {
+      align-self: center;
+      padding-top: 24px;
+      color: var(--border);
+    }
+
+    .step-arrow svg {
+      display: block;
+    }
+
+    /* ─── PRICING ─── */
+    .pricing-tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 4px;
+      width: fit-content;
+      margin-bottom: 40px;
+    }
+
+    .pricing-tab {
+      font-family: 'Onest', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px 20px;
+      border-radius: 7px;
+      transition: all 0.2s;
+    }
+
+    .pricing-tab.active {
+      background: var(--card-bg);
+      color: var(--text-primary);
+      box-shadow: var(--card-shadow);
+    }
+
+    .pricing-panel { display: none; }
+    .pricing-panel.active { display: block; }
+
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .price-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--card-shadow);
+      transition: border-color 0.2s;
+    }
+
+    .price-card:hover { border-color: #C8C4BD; }
+    .price-card.featured { border-color: var(--text-primary); }
+
+    .price-card-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+    }
+
+    .price-card-tokens {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 4px;
+    }
+
+    .price-card-price {
+      font-size: 15px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .pricing-note {
+      margin-top: 24px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* ─── FAQ ─── */
+    .faq-list { max-width: 720px; }
+
+    .faq-item {
+      border-bottom: 1px solid var(--border);
+    }
+
+    .faq-item:first-child {
+      border-top: 1px solid var(--border);
+    }
+
+    .faq-btn {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 0;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: 'Onest', sans-serif;
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text-primary);
+      text-align: left;
+      gap: 16px;
+    }
+
+    .faq-icon {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      color: var(--text-muted);
+      transition: transform 0.25s;
+    }
+
+    .faq-item.open .faq-icon { transform: rotate(45deg); }
+
+    .faq-body {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.3s ease;
+    }
+
+    .faq-body p {
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.65;
+      padding-bottom: 20px;
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      padding: 48px 0;
+    }
+
+    .footer-inner {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .footer-logo {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+
+    .footer-links a {
+      font-size: 13px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover { color: var(--text-primary); }
+
+    .footer-meta {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* ─── FADE IN ANIMATION ─── */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 1024px) {
+      .steps {
+        grid-template-columns: 1fr;
+        gap: 40px;
+      }
+
+      .step-arrow { display: none; }
+      .step { text-align: left; padding: 0; }
+      .step-num { font-size: 36px; margin-bottom: 12px; }
+    }
+
+    @media (max-width: 768px) {
+      section { padding: 80px 0; }
+
+      .hero { padding: 80px 0 64px; }
+
+      .nav { display: none; }
+
+      .header-inner { gap: 16px; }
+
+      .pricing-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 480px) {
+      .pricing-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .models-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .models-auto-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .btn-lg {
+        width: 100%;
+        padding: 14px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── HEADER ─── -->
+<header class="header">
+  <div class="container">
+    <div class="header-inner">
+      <a href="/" class="logo">ProstoAI</a>
+      <nav class="nav">
+        <a href="#models">Модели</a>
+        <a href="#pricing">Тарифы</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+      <a href="https://t.me/my_prostoai_bot" class="btn" target="_blank" rel="noopener">Открыть бота</a>
+    </div>
+  </div>
+</header>
+
+<!-- ─── HERO ─── -->
+<section class="hero">
+  <div class="container">
+    <span class="hero-label">Telegram AI-бот</span>
+    <h1>Все модели AI<br>в одном боте</h1>
+    <p>GPT-5, DALL-E 3, генерация изображений и голос — прямо в Telegram. Без VPN, оплата в рублях.</p>
+    <div class="hero-cta">
+      <a href="https://t.me/my_prostoai_bot" class="btn btn-lg" target="_blank" rel="noopener">Попробовать бесплатно</a>
+      <span class="hero-note">15 000 токенов в подарок при регистрации</span>
+    </div>
+  </div>
+</section>
+
+<!-- ─── MODELS ─── -->
+<section id="models" class="models-bg">
+  <div class="container">
+    <div class="section-header fade-in">
+      <div class="section-label">Возможности</div>
+      <h2 class="section-title">10 моделей для любых задач</h2>
+      <p class="section-sub">Выберите модель под задачу — от быстрых ответов до высококачественной генерации изображений.</p>
+    </div>
+
+    <div class="models-group fade-in">
+      <div class="models-group-title">Чат-модели</div>
+      <div class="models-grid">
+        <div class="model-card">
+          <div class="model-name">GPT-4.1 Mini</div>
+          <div class="model-desc">Быстрые ответы на каждый день</div>
+          <div class="model-cost">~1 500 токенов за запрос</div>
+        </div>
+        <div class="model-card">
+          <div class="model-name">GPT-5 Mini</div>
+          <div class="model-desc">Умный помощник для сложных задач</div>
+          <div class="model-cost">~3 500 токенов за запрос</div>
+        </div>
+        <div class="model-card">
+          <div class="model-name">GPT-4o</div>
+          <div class="model-desc">Анализ текста, фото и кода</div>
+          <div class="model-cost">~5 000 токенов за запрос</div>
+        </div>
+        <div class="model-card">
+          <div class="model-name">GPT-5.2</div>
+          <div class="model-desc">Самая мощная модель</div>
+          <div class="model-cost">~8 000 токенов за запрос</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="models-group fade-in">
+      <div class="models-group-title">Генерация изображений</div>
+      <div class="models-grid">
+        <div class="model-card">
+          <div class="model-name">GPT Image Mini</div>
+          <div class="model-desc">Быстрая генерация картинок</div>
+          <div class="model-cost">~12 000 токенов за генерацию</div>
+        </div>
+        <div class="model-card">
+          <div class="model-name">GPT Image 1</div>
+          <div class="model-desc">Качественные иллюстрации</div>
+          <div class="model-cost">~25 000 токенов за генерацию</div>
+        </div>
+        <div class="model-card">
+          <div class="model-name">GPT Image 1.5</div>
+          <div class="model-desc">Максимальное качество</div>
+          <div class="model-cost">~35 000 токенов за генерацию</div>
+        </div>
+        <div class="model-card">
+          <div class="model-name">DALL-E 3</div>
+          <div class="model-desc">Классический генератор от OpenAI</div>
+          <div class="model-cost">~25 000 токенов за генерацию</div>
+        </div>
+        <div class="model-card">
+          <div class="model-name">Nano Banana 2</div>
+          <div class="model-desc">Генерация на базе Google</div>
+          <div class="model-cost">~50 000 токенов за генерацию</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="models-group fade-in">
+      <div class="models-group-title">Автоматически</div>
+      <div class="models-auto-grid">
+        <div class="auto-card">
+          <div class="auto-card-name">Голосовые сообщения</div>
+          <div class="auto-card-desc">Отправьте голосовое — бот транскрибирует и ответит</div>
+        </div>
+        <div class="auto-card">
+          <div class="auto-card-name">Анализ фото</div>
+          <div class="auto-card-desc">Отправьте фото — бот опишет и проанализирует</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── HOW IT WORKS ─── -->
+<section id="how">
+  <div class="container">
+    <div class="section-header fade-in">
+      <div class="section-label">Начать просто</div>
+      <h2 class="section-title">Три шага</h2>
+    </div>
+
+    <div class="steps fade-in">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-title">Откройте бота</div>
+        <div class="step-desc">Найдите @my_prostoai_bot в Telegram и нажмите&nbsp;Start</div>
+      </div>
+
+      <div class="step-arrow">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12h14M13 6l6 6-6 6"/>
+        </svg>
+      </div>
+
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-title">Выберите модель</div>
+        <div class="step-desc">Чат, генерация картинок или голосовое сообщение</div>
+      </div>
+
+      <div class="step-arrow">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 12h14M13 6l6 6-6 6"/>
+        </svg>
+      </div>
+
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-title">Получите ответ</div>
+        <div class="step-desc">За секунды — текст, изображение или расшифровка</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── PRICING ─── -->
+<section id="pricing" class="models-bg">
+  <div class="container">
+    <div class="section-header fade-in">
+      <div class="section-label">Стоимость</div>
+      <h2 class="section-title">Тарифы</h2>
+      <p class="section-sub">15 000 токенов бесплатно при регистрации</p>
+    </div>
+
+    <div class="fade-in">
+      <div class="pricing-tabs">
+        <button class="pricing-tab active" data-tab="expiring">Сгорающие · 30 дней</button>
+        <button class="pricing-tab" data-tab="permanent">Постоянные</button>
+      </div>
+
+      <div class="pricing-panel active" id="tab-expiring">
+        <div class="pricing-grid">
+          <div class="price-card">
+            <div class="price-card-name">Starter</div>
+            <div class="price-card-tokens">100 000</div>
+            <div class="price-card-price">99 ₽</div>
+          </div>
+          <div class="price-card">
+            <div class="price-card-name">Basic</div>
+            <div class="price-card-tokens">250 000</div>
+            <div class="price-card-price">249 ₽</div>
+          </div>
+          <div class="price-card featured">
+            <div class="price-card-name">Standard</div>
+            <div class="price-card-tokens">500 000</div>
+            <div class="price-card-price">399 ₽</div>
+          </div>
+          <div class="price-card">
+            <div class="price-card-name">Pro</div>
+            <div class="price-card-tokens">1 500 000</div>
+            <div class="price-card-price">990 ₽</div>
+          </div>
+          <div class="price-card">
+            <div class="price-card-name">Ultra</div>
+            <div class="price-card-tokens">5 000 000</div>
+            <div class="price-card-price">2 990 ₽</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pricing-panel" id="tab-permanent">
+        <div class="pricing-grid">
+          <div class="price-card">
+            <div class="price-card-name">Mini</div>
+            <div class="price-card-tokens">50 000</div>
+            <div class="price-card-price">99 ₽</div>
+          </div>
+          <div class="price-card">
+            <div class="price-card-name">Medium</div>
+            <div class="price-card-tokens">200 000</div>
+            <div class="price-card-price">349 ₽</div>
+          </div>
+          <div class="price-card">
+            <div class="price-card-name">Large</div>
+            <div class="price-card-tokens">500 000</div>
+            <div class="price-card-price">699 ₽</div>
+          </div>
+          <div class="price-card">
+            <div class="price-card-name">XL</div>
+            <div class="price-card-tokens">1 000 000</div>
+            <div class="price-card-price">990 ₽</div>
+          </div>
+        </div>
+      </div>
+
+      <p class="pricing-note">Оплата картой, СБП или Telegram Stars</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FAQ ─── -->
+<section id="faq">
+  <div class="container">
+    <div class="section-header fade-in">
+      <div class="section-label">Ответы</div>
+      <h2 class="section-title">Вопросы</h2>
+    </div>
+
+    <div class="faq-list fade-in">
+      <div class="faq-item">
+        <button class="faq-btn" aria-expanded="false">
+          Что такое токены?
+          <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+        </button>
+        <div class="faq-body">
+          <p>Токены — внутренняя валюта бота. Каждый запрос к AI-модели списывает определённое количество токенов. Чем мощнее модель, тем больше токенов за запрос.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" aria-expanded="false">
+          Нужен ли VPN?
+          <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+        </button>
+        <div class="faq-body">
+          <p>Нет. Бот работает через Telegram, доступ ко всем моделям без VPN.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" aria-expanded="false">
+          Как оплатить?
+          <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+        </button>
+        <div class="faq-body">
+          <p>Банковская карта, СБП, SberPay, ЮMoney — прямо в боте. Пакеты до 399 ₽ можно оплатить Telegram Stars.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" aria-expanded="false">
+          Что значит «сгорающие» токены?
+          <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+        </button>
+        <div class="faq-body">
+          <p>Сгорающие пакеты действуют 30 дней с момента покупки. Неиспользованные токены сгорают. Постоянные пакеты — навсегда.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" aria-expanded="false">
+          Бесплатный доступ есть?
+          <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+        </button>
+        <div class="faq-body">
+          <p>Да, при первом запуске бота вы получаете 15 000 токенов бесплатно. Этого хватит на ~10 запросов к GPT-4.1 Mini или ~3 запроса к GPT-4o.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-btn" aria-expanded="false">
+          Мои данные в безопасности?
+          <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+        </button>
+        <div class="faq-body">
+          <p>Мы не храним содержимое ваших запросов. Подробнее — в <a href="https://telegra.ph/ProstoAI--Politika-konfidencialnosti-03-13" target="_blank" rel="noopener" style="color:var(--text-primary)">Политике конфиденциальности</a>.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── FOOTER ─── -->
+<footer>
+  <div class="container">
+    <div class="footer-inner">
+      <a href="/" class="footer-logo">ProstoAI</a>
+      <div class="footer-links">
+        <a href="https://telegra.ph/ProstoAI--Politika-konfidencialnosti-03-13" target="_blank" rel="noopener">Политика конфиденциальности</a>
+        <a href="https://telegra.ph/ProstoAI--Usloviya-ispolzovaniya-03-13" target="_blank" rel="noopener">Условия использования</a>
+        <a href="https://t.me/my_prostoai_bot" target="_blank" rel="noopener">Telegram</a>
+      </div>
+      <div class="footer-meta">
+        ИП Халипов К.С. · ИНН 503243402952 &nbsp;·&nbsp; © 2026 ProstoAI
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // ─── FAQ accordion ───
+  document.querySelectorAll('.faq-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = btn.closest('.faq-item');
+      const body = item.querySelector('.faq-body');
+      const isOpen = item.classList.contains('open');
+
+      // Close all
+      document.querySelectorAll('.faq-item').forEach(el => {
+        el.classList.remove('open');
+        el.querySelector('.faq-btn').setAttribute('aria-expanded', 'false');
+        el.querySelector('.faq-body').style.maxHeight = '0';
+      });
+
+      // Toggle current
+      if (!isOpen) {
+        item.classList.add('open');
+        btn.setAttribute('aria-expanded', 'true');
+        body.style.maxHeight = body.scrollHeight + 'px';
+      }
+    });
+  });
+
+  // ─── Pricing tabs ───
+  document.querySelectorAll('.pricing-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.dataset.tab;
+      document.querySelectorAll('.pricing-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.pricing-panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('tab-' + target).classList.add('active');
+    });
+  });
+
+  // ─── Fade-in on scroll ───
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.08 });
+
+  document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>

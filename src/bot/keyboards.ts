@@ -123,22 +123,22 @@ export function buyKeyboard() {
   return Markup.inlineKeyboard([
     // Expiring (30 days)
     [
-      Markup.button.callback('💰 Starter 100k — 99₽ (30д)', 'buy_starter'),
-      Markup.button.callback('💎 Basic 250k — 249₽ (30д)', 'buy_basic'),
+      Markup.button.callback('Starter — 99 ₽', 'buy_starter'),
+      Markup.button.callback('Basic — 249 ₽', 'buy_basic'),
     ],
     [
-      Markup.button.callback('⭐ Standard 500k — 399₽ (30д)', 'buy_standard'),
-      Markup.button.callback('🚀 Pro 1.5M — 990₽ (30д)', 'buy_pro'),
+      Markup.button.callback('Standard — 399 ₽', 'buy_standard'),
+      Markup.button.callback('Pro — 990 ₽', 'buy_pro'),
     ],
-    [Markup.button.callback('👑 Ultra 5M — 2990₽ (30д)', 'buy_ultra')],
+    [Markup.button.callback('Ultra — 2 990 ₽', 'buy_ultra')],
     // Permanent
     [
-      Markup.button.callback('💚 Mini 50k — 99₽ (∞)', 'buy_mini'),
-      Markup.button.callback('💙 Medium 200k — 349₽ (∞)', 'buy_medium'),
+      Markup.button.callback('Mini ∞ — 99 ₽', 'buy_mini'),
+      Markup.button.callback('Medium ∞ — 349 ₽', 'buy_medium'),
     ],
     [
-      Markup.button.callback('💜 Large 500k — 699₽ (∞)', 'buy_large'),
-      Markup.button.callback('🧡 XL 1000k — 990₽ (∞)', 'buy_xl'),
+      Markup.button.callback('Large ∞ — 699 ₽', 'buy_large'),
+      Markup.button.callback('XL ∞ — 990 ₽', 'buy_xl'),
     ],
     [Markup.button.callback('◀️ В главное меню', 'back_menu')],
   ]);

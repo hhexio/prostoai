@@ -75,7 +75,11 @@ export class BotUpdate {
     if (isNew) {
       await ctx.reply(MESSAGES.WELCOME_NEW, {
         parse_mode: 'HTML',
-        ...mainMenuKeyboard(activeHelperLabel),
+        ...Markup.inlineKeyboard([
+          [Markup.button.callback('⚡ GPT-4.1 Mini — ~1 500 токенов', 'model_gpt-4.1-mini')],
+          [Markup.button.callback('🌟 GPT-4o — ~5 000 токенов', 'model_gpt-4o')],
+          [Markup.button.callback('🤖 Все модели', 'select_model')],
+        ]),
       });
     } else {
       await ctx.reply(MESSAGES.MAIN_MENU(user.balance), {
@@ -421,6 +425,29 @@ export class BotUpdate {
         ]),
       },
     );
+  }
+
+  @Action('select_model')
+  async onSelectModel(@Ctx() ctx: Context) {
+    try {
+      await ctx.editMessageText('🤖 <b>Выберите категорию:</b>', {
+        parse_mode: 'HTML',
+        ...Markup.inlineKeyboard([
+          [Markup.button.callback('💬 Чат-модели', 'menu_chat')],
+          [Markup.button.callback('🎨 Модели генерации изображений', 'menu_image')],
+          [Markup.button.callback('◀️ В главное меню', 'back_menu')],
+        ]),
+      });
+    } catch {
+      await ctx.reply('🤖 <b>Выберите категорию:</b>', {
+        parse_mode: 'HTML',
+        ...Markup.inlineKeyboard([
+          [Markup.button.callback('💬 Чат-модели', 'menu_chat')],
+          [Markup.button.callback('🎨 Модели генерации изображений', 'menu_image')],
+          [Markup.button.callback('◀️ В главное меню', 'back_menu')],
+        ]),
+      });
+    }
   }
 
   @Action('back_menu')

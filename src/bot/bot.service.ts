@@ -143,8 +143,23 @@ export class BotService {
       return;
     }
 
-    // Determine model
-    const modelId = user.selectedModel ?? this.router.route(type, messageText);
+    // Require explicit model selection
+    if (!user.selectedModel && (type === 'text' || type === 'photo')) {
+      const hint = type === 'photo'
+        ? 'Для анализа фото выберите чат-модель, для редактирования — модель генерации изображений.'
+        : 'Нажмите кнопку ниже, чтобы выбрать модель для работы.';
+      await ctx.reply(
+        `⚠️ Сначала выберите модель.\n\n${hint}`,
+        Markup.inlineKeyboard([
+          [Markup.button.callback('🤖 Выбрать модель', 'select_model')],
+          [Markup.button.callback('◀️ В главное меню', 'back_menu')],
+        ]),
+      );
+      return;
+    }
+
+    // Voice always routes through Whisper; text/photo require explicit selection
+    const modelId = (type === 'voice' || type === 'audio') ? 'whisper' : user.selectedModel!;
     const model = getModel(modelId);
     const isImageModel = model?.category === 'image';
 
@@ -224,15 +239,22 @@ export class BotService {
         const audioBuffer = await this.downloadVoice(ctx);
         aiResponse = await this.ai.transcribeAudio(audioBuffer);
         if (aiResponse.audioText) {
-          const textResponse = await this.ai.chat(
-            user.selectedModel ?? 'gpt-4.1-mini',
-            aiResponse.audioText,
-            systemPrompt,
-          );
-          aiResponse.text = `📝 <b>Расшифровка:</b> ${aiResponse.audioText}\n\n💬 <b>Ответ:</b> ${textResponse.text}`;
-          aiResponse.totalCost += textResponse.totalCost;
-          aiResponse.inputTokens += textResponse.inputTokens;
-          aiResponse.outputTokens += textResponse.outputTokens;
+          if (!user.selectedModel) {
+            // Only transcription — user hasn't chosen a chat model yet
+            aiResponse.text = `📝 <b>Расшифровка:</b> ${aiResponse.audioText}`;
+            // Will fall through to normal response + deduct Whisper cost
+            // After sending, prompt to select model
+          } else {
+            const textResponse = await this.ai.chat(
+              user.selectedModel,
+              aiResponse.audioText,
+              systemPrompt,
+            );
+            aiResponse.text = `📝 <b>Расшифровка:</b> ${aiResponse.audioText}\n\n💬 <b>Ответ:</b> ${textResponse.text}`;
+            aiResponse.totalCost += textResponse.totalCost;
+            aiResponse.inputTokens += textResponse.inputTokens;
+            aiResponse.outputTokens += textResponse.outputTokens;
+          }
         }
       } else if (isImageModel && model?.endpoint === 'google') {
         aiResponse = await this.ai.generateImageGemini(modelId, messageText);

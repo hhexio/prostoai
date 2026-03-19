@@ -373,7 +373,7 @@ export class AiService {
   estimateCost(modelId: string): number {
     const model = getModel(modelId);
     if (!model) return 0;
-    return Math.ceil(model.estimatedTokens * model.multiplier);
+    return model.estimatedTokens;
   }
 
   private handleError(err: any): Error {

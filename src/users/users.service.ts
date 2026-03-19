@@ -90,6 +90,19 @@ export class UsersService {
     });
   }
 
+  async getActiveHelperId(userId: number): Promise<string | null> {
+    const val = await this.redis.get(`helper:${userId}`);
+    return val || null;
+  }
+
+  async setActiveHelper(userId: number, helperId: string | null) {
+    if (helperId) {
+      await this.redis.set(`helper:${userId}`, helperId);
+    } else {
+      await this.redis.del(`helper:${userId}`);
+    }
+  }
+
   async isAdmin(userId: number, telegramId: bigint): Promise<boolean> {
     const adminId = this.config.get<string>('ADMIN_TELEGRAM_ID');
     if (adminId && BigInt(adminId) === telegramId) return true;

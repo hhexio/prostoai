@@ -27,8 +27,11 @@ import {
   buyMethodKeyboard,
   profileKeyboard,
   backToMenuKeyboard,
+  helpersMenuKeyboard,
+  helperSelectedKeyboard,
 } from './keyboards';
 import { getModel } from '../ai/models.config';
+import { HELPERS, getHelper } from '../helpers/helpers.config';
 import { ConfigService } from '@nestjs/config';
 
 @Update()
@@ -67,15 +70,17 @@ export class BotUpdate {
     // Check if user is new (created within last 5 seconds)
     const isNew = Date.now() - user.createdAt.getTime() < 5000;
 
+    const activeHelperLabel = await this.buildHelperLabel(user.id);
+
     if (isNew) {
       await ctx.reply(MESSAGES.WELCOME_NEW, {
         parse_mode: 'HTML',
-        ...mainMenuKeyboard(),
+        ...mainMenuKeyboard(activeHelperLabel),
       });
     } else {
       await ctx.reply(MESSAGES.MAIN_MENU(user.balance), {
         parse_mode: 'HTML',
-        ...mainMenuKeyboard(),
+        ...mainMenuKeyboard(activeHelperLabel),
       });
     }
   }
@@ -422,21 +427,94 @@ export class BotUpdate {
   async onBackMenu(@Ctx() ctx: Context) {
     const telegramId = BigInt(ctx.from!.id);
     const user = await this.users.findOrCreate(telegramId);
-
+    const activeHelperLabel = await this.buildHelperLabel(user.id);
     const text = MESSAGES.MAIN_MENU(user.balance);
 
     try {
       await ctx.editMessageText(text, {
         parse_mode: 'HTML',
-        ...mainMenuKeyboard(),
+        ...mainMenuKeyboard(activeHelperLabel),
       });
     } catch {
-      // editMessageText fails if original message had an image
       await ctx.reply(text, {
         parse_mode: 'HTML',
-        ...mainMenuKeyboard(),
+        ...mainMenuKeyboard(activeHelperLabel),
       });
     }
+  }
+
+  @Action('helpers_menu')
+  async onHelpersMenu(@Ctx() ctx: Context) {
+    const telegramId = BigInt(ctx.from!.id);
+    const user = await this.users.findOrCreate(telegramId);
+    const activeHelperId = await this.users.getActiveHelperId(user.id);
+
+    const lines = HELPERS.map((h) => `${h.emoji} <b>${h.name}</b> — ${h.description}`).join('\n');
+    const text = `🎭 <b>Помощники</b>\n\nВыберите помощника — он будет обрабатывать все ваши сообщения.\n\n${lines}`;
+
+    try {
+      await ctx.editMessageText(text, {
+        parse_mode: 'HTML',
+        ...helpersMenuKeyboard(!!activeHelperId),
+      });
+    } catch {
+      await ctx.reply(text, {
+        parse_mode: 'HTML',
+        ...helpersMenuKeyboard(!!activeHelperId),
+      });
+    }
+  }
+
+  @Action(/^helper_select:(.+)$/)
+  async onHelperSelect(@Ctx() ctx: Context) {
+    const match = (ctx as any).match;
+    const helperId = match?.[1];
+    const helper = getHelper(helperId);
+    if (!helper) return;
+
+    const telegramId = BigInt(ctx.from!.id);
+    const user = await this.users.findOrCreate(telegramId);
+    await this.users.setActiveHelper(user.id, helperId);
+
+    const text =
+      `${helper.emoji} <b>${helper.name} активирован</b>\n\n` +
+      `${helper.description}\n\n` +
+      `Теперь все ваши сообщения будут обрабатываться с учётом этой роли. Просто напишите запрос.`;
+
+    try {
+      await ctx.editMessageText(text, {
+        parse_mode: 'HTML',
+        ...helperSelectedKeyboard(),
+      });
+    } catch {
+      await ctx.reply(text, {
+        parse_mode: 'HTML',
+        ...helperSelectedKeyboard(),
+      });
+    }
+  }
+
+  @Action('helper_disable')
+  async onHelperDisable(@Ctx() ctx: Context) {
+    const telegramId = BigInt(ctx.from!.id);
+    const user = await this.users.findOrCreate(telegramId);
+    await this.users.setActiveHelper(user.id, null);
+
+    try {
+      await ctx.editMessageText(
+        'Помощник отключён. Бот работает в обычном режиме.',
+        { ...backToMenuKeyboard() },
+      );
+    } catch {
+      await ctx.reply('Помощник отключён. Бот работает в обычном режиме.', backToMenuKeyboard());
+    }
+  }
+
+  private async buildHelperLabel(userId: number): Promise<string | undefined> {
+    const helperId = await this.users.getActiveHelperId(userId);
+    if (!helperId) return undefined;
+    const helper = getHelper(helperId);
+    return helper ? `🎭 Помощник: ${helper.emoji} ${helper.name}` : undefined;
   }
 
   // --- Message Handlers ---

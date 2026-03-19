@@ -1,6 +1,6 @@
 import { Markup } from 'telegraf';
 
-export function mainMenuKeyboard() {
+export function mainMenuKeyboard(activeHelperLabel?: string) {
   return Markup.inlineKeyboard([
     [
       Markup.button.callback('🧠 GPT-5.2', 'model_gpt-5.2'),
@@ -11,9 +11,42 @@ export function mainMenuKeyboard() {
       Markup.button.callback('🎨 Создать фото', 'menu_image'),
     ],
     [
+      Markup.button.callback(activeHelperLabel ?? '🎭 Помощники', 'helpers_menu'),
+    ],
+    [
       Markup.button.callback('👤 Мой профиль', 'profile'),
       Markup.button.callback('💎 Купить токены', 'buy_tokens'),
     ],
+  ]);
+}
+
+export function helpersMenuKeyboard(hasActive: boolean) {
+  const rows = [
+    [Markup.button.callback('✍️ Копирайтер', 'helper_select:copywriter')],
+    [Markup.button.callback('🌍 Переводчик', 'helper_select:translator')],
+    [Markup.button.callback('💻 Программист', 'helper_select:programmer')],
+    [Markup.button.callback('🔍 SEO-специалист', 'helper_select:seo')],
+    [Markup.button.callback('🇬🇧 Репетитор английского', 'helper_select:english_tutor')],
+    [Markup.button.callback('📊 Маркетолог', 'helper_select:marketer')],
+    [Markup.button.callback('📱 SMM-менеджер', 'helper_select:smm')],
+    [Markup.button.callback('🏋️ Нутрициолог и тренер', 'helper_select:fitness')],
+  ] as ReturnType<typeof Markup.button.callback>[][];
+
+  if (hasActive) {
+    rows.push([Markup.button.callback('❌ Отключить помощника', 'helper_disable')]);
+  }
+  rows.push([Markup.button.callback('◀️ В главное меню', 'back_menu')]);
+
+  return Markup.inlineKeyboard(rows);
+}
+
+export function helperSelectedKeyboard() {
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback('🎭 Сменить помощника', 'helpers_menu'),
+      Markup.button.callback('❌ Отключить', 'helper_disable'),
+    ],
+    [Markup.button.callback('◀️ В главное меню', 'back_menu')],
   ]);
 }
 

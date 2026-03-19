@@ -10,6 +10,7 @@ import { ReferralService } from '../users/referral.service';
 import { getModel } from '../ai/models.config';
 import { MESSAGES } from './messages';
 import { buyKeyboard, backToMenuKeyboard } from './keyboards';
+import { getHelper } from '../helpers/helpers.config';
 import { ConfigService } from '@nestjs/config';
 
 const IMAGE_MODEL_EMOJI: Record<string, string> = {
@@ -193,6 +194,15 @@ export class BotService {
 
     const statusMsg = await ctx.reply(statusText);
 
+    // Resolve active helper system prompt (chat/vision only, not image models)
+    let systemPrompt: string | undefined;
+    if (!isImageModel) {
+      const helperId = await this.users.getActiveHelperId(user.id);
+      if (helperId) {
+        systemPrompt = getHelper(helperId)?.systemPrompt;
+      }
+    }
+
     // Call AI
     let aiResponse;
     try {
@@ -209,7 +219,7 @@ export class BotService {
         const photoBuffer = await this.downloadPhoto(ctx);
         const base64 = photoBuffer.toString('base64');
         const caption = (ctx.message as any)?.caption;
-        aiResponse = await this.ai.analyzePhoto(modelId, base64, caption);
+        aiResponse = await this.ai.analyzePhoto(modelId, base64, caption, systemPrompt);
       } else if (type === 'voice' || type === 'audio') {
         const audioBuffer = await this.downloadVoice(ctx);
         aiResponse = await this.ai.transcribeAudio(audioBuffer);
@@ -217,6 +227,7 @@ export class BotService {
           const textResponse = await this.ai.chat(
             user.selectedModel ?? 'gpt-4.1-mini',
             aiResponse.audioText,
+            systemPrompt,
           );
           aiResponse.text = `📝 <b>Расшифровка:</b> ${aiResponse.audioText}\n\n💬 <b>Ответ:</b> ${textResponse.text}`;
           aiResponse.totalCost += textResponse.totalCost;
@@ -228,7 +239,7 @@ export class BotService {
       } else if (isImageModel) {
         aiResponse = await this.ai.generateImage(modelId, messageText);
       } else {
-        aiResponse = await this.ai.chat(modelId, messageText);
+        aiResponse = await this.ai.chat(modelId, messageText, systemPrompt);
       }
     } catch (err) {
       let errorMsg = MESSAGES.ERROR_GENERAL;

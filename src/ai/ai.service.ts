@@ -295,12 +295,22 @@ export class AiService {
     }
   }
 
-  async analyzePhoto(modelId: string, imageBase64: string, question?: string): Promise<AiResponse> {
+  async analyzePhoto(modelId: string, imageBase64: string, question?: string, systemPrompt?: string): Promise<AiResponse> {
     const model = getModel(modelId);
     if (!model) throw new Error(`Unknown model: ${modelId}`);
 
     const text = question ?? 'Опиши это изображение подробно.';
     const start = Date.now();
+
+    const messages: any[] = [];
+    if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+    messages.push({
+      role: 'user',
+      content: [
+        { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } },
+        { type: 'text', text },
+      ],
+    });
 
     try {
       const response = await firstValueFrom(
@@ -308,15 +318,7 @@ export class AiService {
           `${this.baseUrl}/chat/completions`,
           {
             model: model.apiModel,
-            messages: [
-              {
-                role: 'user',
-                content: [
-                  { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } },
-                  { type: 'text', text },
-                ],
-              },
-            ],
+            messages,
             max_completion_tokens: model.maxTokens,
           },
           { headers: this.headers, timeout: 120000 },

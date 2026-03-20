@@ -11,16 +11,15 @@ export const MESSAGES = {
 
 Просто напиши что угодно — и я отвечу! ✨`,
 
-  MAIN_MENU: (tokens: number) => `🤖 <b>ProstoAI</b> — твой AI-помощник
+  MAIN_MENU: (tokens: number, modelName?: string | null) => `🤖 <b>ProstoAI</b> — твой AI-помощник
 
 💬 Отвечаю на любые вопросы (GPT-5.2, GPT-4o)
 🎨 Создаю картинки по описанию (Nano Banana 2, DALL-E 3)
 📸 Анализирую фото — просто отправь!
 🎤 Распознаю голосовые — просто запиши!
 
-💰 Баланс: <b>${tokens.toLocaleString('ru-RU')}</b> токенов
-
-Просто напиши что угодно — и я отвечу! ✨`,
+🤖 Модель: <b>${modelName ?? 'не выбрана'}</b>
+💰 Баланс: <b>${tokens.toLocaleString('ru-RU')}</b> токенов`,
 
   HELP: `
 <b>❓ Справка ProstoAI</b>

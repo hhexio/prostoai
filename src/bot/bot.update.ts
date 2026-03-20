@@ -82,7 +82,8 @@ export class BotUpdate {
         ]),
       });
     } else {
-      await ctx.reply(MESSAGES.MAIN_MENU(user.balance), {
+      const selectedModel = user.selectedModel ? getModel(user.selectedModel) : null;
+      await ctx.reply(MESSAGES.MAIN_MENU(user.balance, selectedModel?.displayName), {
         parse_mode: 'HTML',
         ...mainMenuKeyboard(activeHelperLabel),
       });
@@ -455,7 +456,8 @@ export class BotUpdate {
     const telegramId = BigInt(ctx.from!.id);
     const user = await this.users.findOrCreate(telegramId);
     const activeHelperLabel = await this.buildHelperLabel(user.id);
-    const text = MESSAGES.MAIN_MENU(user.balance);
+    const selectedModel = user.selectedModel ? getModel(user.selectedModel) : null;
+    const text = MESSAGES.MAIN_MENU(user.balance, selectedModel?.displayName);
 
     try {
       await ctx.editMessageText(text, {

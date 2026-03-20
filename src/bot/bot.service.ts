@@ -358,7 +358,7 @@ export class BotService {
         );
       } else {
         await ctx.reply(
-          `💰 −${actualCost.toLocaleString('ru-RU')} токенов (зависит от длины). Осталось: ${remainingBalance.toLocaleString('ru-RU')}`,
+          `💬 ${model!.displayName} · −${actualCost.toLocaleString('ru-RU')} токенов (зависит от длины). Осталось: ${remainingBalance.toLocaleString('ru-RU')}`,
           Markup.inlineKeyboard([
             [Markup.button.callback('◀️ В главное меню', 'back_menu')],
           ]),

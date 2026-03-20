@@ -3,6 +3,10 @@ import { Markup } from 'telegraf';
 export function mainMenuKeyboard(activeHelperLabel?: string) {
   return Markup.inlineKeyboard([
     [
+      Markup.button.callback('🧠 GPT-5.2', 'model_gpt-5.2'),
+      Markup.button.callback('🍌 Nano Banana 2', 'model_nano-banana-2'),
+    ],
+    [
       Markup.button.callback('💬 Чат-модели', 'menu_chat'),
       Markup.button.callback('🎨 Создать фото', 'menu_image'),
     ],

@@ -277,7 +277,8 @@ export class BotUpdate {
         return;
     }
 
-    await ctx.editMessageText(infoText, {
+    try { await ctx.deleteMessage(); } catch {}
+    await ctx.reply(infoText, {
       parse_mode: 'HTML',
       ...keyboard,
     });
@@ -296,7 +297,8 @@ export class BotUpdate {
 
     const descFn = MODEL_DESCRIPTIONS[modelId];
     const text = descFn ? descFn(user.balance) : MESSAGES.MODEL_SELECTED(model.displayName);
-    await ctx.editMessageText(text, {
+    try { await ctx.deleteMessage(); } catch {}
+    await ctx.reply(text, {
       parse_mode: 'HTML',
       ...backToMenuKeyboard(),
     });
@@ -435,25 +437,15 @@ export class BotUpdate {
 
   @Action('select_model')
   async onSelectModel(@Ctx() ctx: Context) {
-    try {
-      await ctx.editMessageText('🤖 <b>Выберите категорию:</b>', {
-        parse_mode: 'HTML',
-        ...Markup.inlineKeyboard([
-          [Markup.button.callback('💬 Чат-модели', 'menu_chat')],
-          [Markup.button.callback('🎨 Модели генерации изображений', 'menu_image')],
-          [Markup.button.callback('◀️ В главное меню', 'back_menu')],
-        ]),
-      });
-    } catch {
-      await ctx.reply('🤖 <b>Выберите категорию:</b>', {
-        parse_mode: 'HTML',
-        ...Markup.inlineKeyboard([
-          [Markup.button.callback('💬 Чат-модели', 'menu_chat')],
-          [Markup.button.callback('🎨 Модели генерации изображений', 'menu_image')],
-          [Markup.button.callback('◀️ В главное меню', 'back_menu')],
-        ]),
-      });
-    }
+    try { await ctx.deleteMessage(); } catch {}
+    await ctx.reply('🤖 <b>Выберите категорию:</b>', {
+      parse_mode: 'HTML',
+      ...Markup.inlineKeyboard([
+        [Markup.button.callback('💬 Чат-модели', 'menu_chat')],
+        [Markup.button.callback('🎨 Модели генерации изображений', 'menu_image')],
+        [Markup.button.callback('◀️ В главное меню', 'back_menu')],
+      ]),
+    });
   }
 
   @Action('back_menu')
@@ -465,17 +457,11 @@ export class BotUpdate {
     const activeHelperLabel = await this.buildHelperLabel(user.id);
     const text = MESSAGES.MAIN_MENU(user.balance);
 
-    try {
-      await ctx.editMessageText(text, {
-        parse_mode: 'HTML',
-        ...mainMenuKeyboard(activeHelperLabel),
-      });
-    } catch {
-      await ctx.reply(text, {
-        parse_mode: 'HTML',
-        ...mainMenuKeyboard(activeHelperLabel),
-      });
-    }
+    try { await ctx.deleteMessage(); } catch {}
+    await ctx.reply(text, {
+      parse_mode: 'HTML',
+      ...mainMenuKeyboard(activeHelperLabel),
+    });
   }
 
   @Action('helpers_menu')
@@ -487,17 +473,11 @@ export class BotUpdate {
     const lines = HELPERS.map((h) => `${h.emoji} <b>${h.name}</b> — ${h.description}`).join('\n');
     const text = `🎭 <b>Помощники</b>\n\nВыберите помощника — он будет обрабатывать все ваши сообщения.\n\n${lines}`;
 
-    try {
-      await ctx.editMessageText(text, {
-        parse_mode: 'HTML',
-        ...helpersMenuKeyboard(!!activeHelperId),
-      });
-    } catch {
-      await ctx.reply(text, {
-        parse_mode: 'HTML',
-        ...helpersMenuKeyboard(!!activeHelperId),
-      });
-    }
+    try { await ctx.deleteMessage(); } catch {}
+    await ctx.reply(text, {
+      parse_mode: 'HTML',
+      ...helpersMenuKeyboard(!!activeHelperId),
+    });
   }
 
   @Action(/^helper_select:(.+)$/)
@@ -516,17 +496,11 @@ export class BotUpdate {
       `${helper.description}\n\n` +
       `Теперь все ваши сообщения будут обрабатываться с учётом этой роли. Просто напишите запрос.`;
 
-    try {
-      await ctx.editMessageText(text, {
-        parse_mode: 'HTML',
-        ...helperSelectedKeyboard(),
-      });
-    } catch {
-      await ctx.reply(text, {
-        parse_mode: 'HTML',
-        ...helperSelectedKeyboard(),
-      });
-    }
+    try { await ctx.deleteMessage(); } catch {}
+    await ctx.reply(text, {
+      parse_mode: 'HTML',
+      ...helperSelectedKeyboard(),
+    });
   }
 
   @Action('helper_disable')
@@ -535,14 +509,8 @@ export class BotUpdate {
     const user = await this.users.findOrCreate(telegramId);
     await this.users.setActiveHelper(user.id, null);
 
-    try {
-      await ctx.editMessageText(
-        'Помощник отключён. Бот работает в обычном режиме.',
-        { ...backToMenuKeyboard() },
-      );
-    } catch {
-      await ctx.reply('Помощник отключён. Бот работает в обычном режиме.', backToMenuKeyboard());
-    }
+    try { await ctx.deleteMessage(); } catch {}
+    await ctx.reply('Помощник отключён. Бот работает в обычном режиме.', backToMenuKeyboard());
   }
 
   private async buildHelperLabel(userId: number): Promise<string | undefined> {

@@ -67,6 +67,9 @@ export class BotUpdate {
       await this.referral.processReferral(user.id, refCode, ctx);
     }
 
+    // Reset to default chat model on /start
+    await this.users.setSelectedModel(user.id, null);
+
     // Check if user is new (created within last 5 seconds)
     const isNew = Date.now() - user.createdAt.getTime() < 5000;
 
@@ -457,6 +460,8 @@ export class BotUpdate {
   async onBackMenu(@Ctx() ctx: Context) {
     const telegramId = BigInt(ctx.from!.id);
     const user = await this.users.findOrCreate(telegramId);
+    // Reset to default chat model when returning to main menu
+    await this.users.setSelectedModel(user.id, null);
     const activeHelperLabel = await this.buildHelperLabel(user.id);
     const text = MESSAGES.MAIN_MENU(user.balance);
 

@@ -76,8 +76,8 @@ export class BotUpdate {
       await ctx.reply(MESSAGES.WELCOME_NEW, {
         parse_mode: 'HTML',
         ...Markup.inlineKeyboard([
-          [Markup.button.callback('⚡ GPT-4.1 Mini — ~1 500 токенов', 'model_gpt-4.1-mini')],
-          [Markup.button.callback('🌟 GPT-4o — ~5 000 токенов', 'model_gpt-4o')],
+          [Markup.button.callback('⚡ GPT-4.1 Mini — до 1 500/запрос', 'model_gpt-4.1-mini')],
+          [Markup.button.callback('🌟 GPT-4o — до 5 000/запрос', 'model_gpt-4o')],
           [Markup.button.callback('🤖 Все модели', 'select_model')],
         ]),
       });

@@ -206,9 +206,13 @@ ${data.topModels.map((m, i) => `${i + 1}. ${m.model}: ${m.count}`).join('\n')}
 `,
 };
 
-function modelDesc(base: string, cost: number, suffix: string) {
+function modelDesc(base: string, cost: number, suffix: string, isImage = false) {
+  const costLabel = isImage ? 'генерацию' : 'запрос';
+  const countLabel = isImage ? 'генераций' : 'запросов';
+  const prefix = isImage ? '~' : 'до';
+  const hint = isImage ? '' : '\n💡 Чем короче запрос — тем дешевле';
   return (balance: number) =>
-    `${base}\n💰 ~${cost.toLocaleString('ru-RU')} токенов за ${cost >= 8000 ? 'генерацию' : 'запрос'}\n📊 Баланса хватит на ~${Math.floor(balance / cost).toLocaleString('ru-RU')} ${cost >= 8000 ? 'генераций' : 'запросов'}\n\n${suffix}`;
+    `${base}\n💰 ${prefix} ${cost.toLocaleString('ru-RU')} токенов за ${costLabel}${hint}\n📊 Баланса хватит на ~${Math.floor(balance / cost).toLocaleString('ru-RU')} ${countLabel}\n\n${suffix}`;
 }
 
 export const MODEL_DESCRIPTIONS: Record<string, (balance: number) => string> = {
@@ -230,22 +234,22 @@ export const MODEL_DESCRIPTIONS: Record<string, (balance: number) => string> = {
   ),
   'gpt-image-1-mini': modelDesc(
     `🖼 <b>GPT Image Mini</b>\n\n🎨 Генерация изображений по описанию\n⚡ Быстрая и экономичная\n📸 Можно прикрепить до 3 фото к запросу`,
-    12000, 'Опишите что хотите увидеть!',
+    12000, 'Опишите что хотите увидеть!', true,
   ),
   'gpt-image-1': modelDesc(
     `🎨 <b>GPT Image 1</b>\n\n🎨 Генерация качественных изображений\n🖌 Хорошая детализация и точность\n📸 Можно прикрепить до 3 фото к запросу`,
-    25000, 'Опишите что хотите увидеть!',
+    25000, 'Опишите что хотите увидеть!', true,
   ),
   'gpt-image-1.5': modelDesc(
     `✨ <b>GPT Image 1.5</b>\n\n🎨 Генерация изображений премиум-качества\n🖌 Максимальная детализация и реалистичность\n📸 Можно прикрепить до 3 фото к запросу`,
-    35000, 'Опишите что хотите увидеть!',
+    35000, 'Опишите что хотите увидеть!', true,
   ),
   'dall-e-3': modelDesc(
     `🌈 <b>DALL-E 3</b>\n\n🎨 Классическая модель от OpenAI\n🖌 Креативный и художественный стиль\n📸 Можно прикрепить до 3 фото к запросу`,
-    25000, 'Опишите что хотите увидеть!',
+    25000, 'Опишите что хотите увидеть!', true,
   ),
   'nano-banana-2': modelDesc(
     `🍌 <b>Nano Banana 2</b>\n\n🎨 Генерация изображений на базе Google Gemini\n✨ Уникальный стиль, поддержка нескольких фото\n📸 Можно прикрепить до 3 фото к запросу`,
-    50000, 'Опишите что хотите увидеть!',
+    50000, 'Опишите что хотите увидеть!', true,
   ),
 };

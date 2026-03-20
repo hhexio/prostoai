@@ -78,7 +78,7 @@ export class AiService {
       const response = await firstValueFrom(
         this.httpService.post(
           `${this.baseUrl}/images/generations`,
-          { model: model.apiModel, prompt, n: 1, size: '1024x1024', response_format: 'b64_json' },
+          { model: model.apiModel, prompt, n: 1, size: '1024x1024', quality: 'medium', response_format: 'b64_json' },
           { headers: this.headers, timeout: 120000 },
         ),
       );

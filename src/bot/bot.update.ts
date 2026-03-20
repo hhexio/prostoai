@@ -75,15 +75,10 @@ export class BotUpdate {
     if (isNew) {
       await ctx.reply(MESSAGES.WELCOME_NEW, {
         parse_mode: 'HTML',
-        ...Markup.inlineKeyboard([
-          [Markup.button.callback('⚡ GPT-4.1 Mini — до 1 500/запрос', 'model_gpt-4.1-mini')],
-          [Markup.button.callback('🌟 GPT-4o — до 5 000/запрос', 'model_gpt-4o')],
-          [Markup.button.callback('🤖 Все модели', 'select_model')],
-        ]),
+        ...mainMenuKeyboard(activeHelperLabel),
       });
     } else {
-      const selectedModel = user.selectedModel ? getModel(user.selectedModel) : null;
-      await ctx.reply(MESSAGES.MAIN_MENU(user.balance, selectedModel?.displayName), {
+      await ctx.reply(MESSAGES.MAIN_MENU(user.balance), {
         parse_mode: 'HTML',
         ...mainMenuKeyboard(activeHelperLabel),
       });
@@ -260,10 +255,17 @@ export class BotUpdate {
     let infoText;
 
     switch (category) {
-      case 'chat':
+      case 'chat': {
+        const telegramId = BigInt(ctx.from!.id);
+        const user = await this.users.findOrCreate(telegramId);
+        const currentModel = user.selectedModel ? getModel(user.selectedModel) : null;
+        const currentLabel = currentModel?.category === 'chat'
+          ? currentModel.displayName
+          : 'GPT-4.1 Mini (по умолчанию)';
         keyboard = chatModelsKeyboard();
-        infoText = '💬 <b>Чат-модели:</b>';
+        infoText = `💬 <b>Выберите чат-модель:</b>\n\nТекущая: ${currentLabel}`;
         break;
+      }
       case 'image':
         keyboard = imageModelsKeyboard();
         infoText = MESSAGES.IMAGE_CATEGORY_INFO;
@@ -456,8 +458,7 @@ export class BotUpdate {
     const telegramId = BigInt(ctx.from!.id);
     const user = await this.users.findOrCreate(telegramId);
     const activeHelperLabel = await this.buildHelperLabel(user.id);
-    const selectedModel = user.selectedModel ? getModel(user.selectedModel) : null;
-    const text = MESSAGES.MAIN_MENU(user.balance, selectedModel?.displayName);
+    const text = MESSAGES.MAIN_MENU(user.balance);
 
     try {
       await ctx.editMessageText(text, {

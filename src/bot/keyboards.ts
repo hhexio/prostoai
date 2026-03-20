@@ -3,10 +3,6 @@ import { Markup } from 'telegraf';
 export function mainMenuKeyboard(activeHelperLabel?: string) {
   return Markup.inlineKeyboard([
     [
-      Markup.button.callback('🧠 GPT-5.2', 'model_gpt-5.2'),
-      Markup.button.callback('🍌 Nano Banana 2', 'model_nano-banana-2'),
-    ],
-    [
       Markup.button.callback('💬 Чат-модели', 'menu_chat'),
       Markup.button.callback('🎨 Создать фото', 'menu_image'),
     ],
@@ -52,32 +48,22 @@ export function helperSelectedKeyboard() {
 
 export function chatModelsKeyboard() {
   return Markup.inlineKeyboard([
-    [
-      Markup.button.callback('⚡ GPT-4.1 Mini', 'model_gpt-4.1-mini'),
-      Markup.button.callback('🧠 GPT-5 Mini', 'model_gpt-5-mini'),
-    ],
-    [
-      Markup.button.callback('🌟 GPT-4o', 'model_gpt-4o'),
-      Markup.button.callback('🧠 GPT-5.2', 'model_gpt-5.2'),
-    ],
+    [Markup.button.callback('⚡ GPT-4.1 Mini — до 1 500/запрос', 'model_gpt-4.1-mini')],
+    [Markup.button.callback('🧠 GPT-5 Mini — до 3 500/запрос', 'model_gpt-5-mini')],
+    [Markup.button.callback('🌟 GPT-4o — до 5 000/запрос', 'model_gpt-4o')],
+    [Markup.button.callback('🧠 GPT-5.2 — до 8 000/запрос', 'model_gpt-5.2')],
     [Markup.button.callback('◀️ В главное меню', 'back_menu')],
   ]);
 }
 
 export function imageModelsKeyboard() {
   return Markup.inlineKeyboard([
-    [
-      Markup.button.callback('🖼 GPT Image Mini', 'model_gpt-image-1-mini'),
-      Markup.button.callback('🍌 Nano Banana 2', 'model_nano-banana-2'),
-    ],
-    [
-      Markup.button.callback('🎨 GPT Image 1', 'model_gpt-image-1'),
-      Markup.button.callback('✨ GPT Image 1.5', 'model_gpt-image-1.5'),
-    ],
-    [
-      Markup.button.callback('🌈 DALL-E 3', 'model_dall-e-3'),
-      Markup.button.callback('◀️ В главное меню', 'back_menu'),
-    ],
+    [Markup.button.callback('🖼 GPT Image Mini — 12 000', 'model_gpt-image-1-mini')],
+    [Markup.button.callback('🎨 GPT Image 1 — 25 000', 'model_gpt-image-1')],
+    [Markup.button.callback('✨ GPT Image 1.5 — 35 000', 'model_gpt-image-1.5')],
+    [Markup.button.callback('🌈 DALL-E 3 — 25 000', 'model_dall-e-3')],
+    [Markup.button.callback('🍌 Nano Banana 2 — 50 000', 'model_nano-banana-2')],
+    [Markup.button.callback('◀️ В главное меню', 'back_menu')],
   ]);
 }
 

@@ -143,23 +143,8 @@ export class BotService {
       return;
     }
 
-    // Require explicit model selection
-    if (!user.selectedModel && (type === 'text' || type === 'photo')) {
-      const hint = type === 'photo'
-        ? 'Для анализа фото выберите чат-модель, для редактирования — модель генерации изображений.'
-        : 'Нажмите кнопку ниже, чтобы выбрать модель для работы.';
-      await ctx.reply(
-        `⚠️ Сначала выберите модель.\n\n${hint}`,
-        Markup.inlineKeyboard([
-          [Markup.button.callback('🤖 Выбрать модель', 'select_model')],
-          [Markup.button.callback('◀️ В главное меню', 'back_menu')],
-        ]),
-      );
-      return;
-    }
-
-    // Voice always routes through Whisper; text/photo require explicit selection
-    const modelId = (type === 'voice' || type === 'audio') ? 'whisper' : user.selectedModel!;
+    // Determine model: user selection or default via router
+    const modelId = user.selectedModel ?? this.router.route(type);
     const model = getModel(modelId);
     const isImageModel = model?.category === 'image';
 
@@ -239,22 +224,16 @@ export class BotService {
         const audioBuffer = await this.downloadVoice(ctx);
         aiResponse = await this.ai.transcribeAudio(audioBuffer);
         if (aiResponse.audioText) {
-          if (!user.selectedModel) {
-            // Only transcription — user hasn't chosen a chat model yet
-            aiResponse.text = `📝 <b>Расшифровка:</b> ${aiResponse.audioText}`;
-            // Will fall through to normal response + deduct Whisper cost
-            // After sending, prompt to select model
-          } else {
-            const textResponse = await this.ai.chat(
-              user.selectedModel,
-              aiResponse.audioText,
-              systemPrompt,
-            );
-            aiResponse.text = `📝 <b>Расшифровка:</b> ${aiResponse.audioText}\n\n💬 <b>Ответ:</b> ${textResponse.text}`;
-            aiResponse.totalCost += textResponse.totalCost;
-            aiResponse.inputTokens += textResponse.inputTokens;
-            aiResponse.outputTokens += textResponse.outputTokens;
-          }
+          const chatModel = user.selectedModel ?? 'gpt-4.1-mini';
+          const textResponse = await this.ai.chat(
+            chatModel,
+            aiResponse.audioText,
+            systemPrompt,
+          );
+          aiResponse.text = `📝 <b>Расшифровка:</b> ${aiResponse.audioText}\n\n💬 <b>Ответ:</b> ${textResponse.text}`;
+          aiResponse.totalCost += textResponse.totalCost;
+          aiResponse.inputTokens += textResponse.inputTokens;
+          aiResponse.outputTokens += textResponse.outputTokens;
         }
       } else if (isImageModel && model?.endpoint === 'google') {
         aiResponse = await this.ai.generateImageGemini(modelId, messageText);
@@ -358,7 +337,7 @@ export class BotService {
         );
       } else {
         await ctx.reply(
-          `💬 ${model!.displayName} · −${actualCost.toLocaleString('ru-RU')} токенов (зависит от длины). Осталось: ${remainingBalance.toLocaleString('ru-RU')}`,
+          `💰 −${actualCost.toLocaleString('ru-RU')} токенов. Осталось: ${remainingBalance.toLocaleString('ru-RU')}`,
           Markup.inlineKeyboard([
             [Markup.button.callback('◀️ В главное меню', 'back_menu')],
           ]),

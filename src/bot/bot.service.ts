@@ -144,7 +144,13 @@ export class BotService {
     }
 
     // Determine model: user selection or default via router
-    const modelId = user.selectedModel ?? this.router.route(type);
+    let modelId = user.selectedModel ?? this.router.route(type);
+
+    // Text messages should never go to image models — fallback to default chat
+    if (type === 'text' && getModel(modelId)?.category === 'image') {
+      modelId = 'gpt-4.1-mini';
+    }
+
     const model = getModel(modelId);
     const isImageModel = model?.category === 'image';
 
